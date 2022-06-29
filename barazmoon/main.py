@@ -1,0 +1,82 @@
+import time
+import json
+from typing import List
+import numpy as np
+from multiprocessing import Process, Value
+import asyncio
+from aiohttp import ClientSession
+
+
+class BarAzmoon:
+    endpoint: str = None
+    timeout: int = None  # timeout: seconds to wait for server to respond to request, ignore when timed out
+    http_method = "get"
+    def __init__(self):
+        self.workload = self.get_workload()
+        self.counter = Value("i", 0)
+        self.success_counter = Value("i", 0)  # Actually, those who did not timed out
+    
+    def get_workload(self) -> List[int]:
+        raise NotImplementedError
+    
+    def start(self):
+        processes = []
+        total_seconds = 0
+        successful_seconds = 0
+        timed_out_seconds = 0
+        for rate in self.workload:
+            total_seconds += 1
+            generator_process = Process(target=self.target_process, args=(rate, self.counter, self.success_counter))
+            generator_process.daemon = True
+            generator_process.start()
+            processes.append(generator_process)
+            time.sleep(1)
+            procs = []
+            if self.timeout:
+                for i in range(len(processes) - self.timeout):
+                    p: Process = processes[i]
+                    if p.exitcode is None:
+                        timed_out_seconds += 1
+                    else:
+                        successful_seconds += 1
+                    p.kill()
+            else:
+                for p in processes:
+                    if p.exitcode is None:
+                        procs.append(p)
+            processes = procs
+        
+        return (self.counter.value, self.counter - self.success_counter.value)
+
+    @classmethod
+    def target_process(cls, count, counter, success_counter):
+        asyncio.run(BarAzmoon.generate_load_for_second(count, counter, success_counter))
+
+    @classmethod
+    async def generate_load_for_second(cls, count, counter, success_counter):
+        async with ClientSession() as session:
+            delays = np.cumsum(np.random.exponential(1 / count, count))
+            tasks = []
+            for i in range(count):
+                task = asyncio.ensure_future(BarAzmoon.predict(delays[i], session, success_counter))
+                tasks.append(task)
+                counter.value += 1
+            await asyncio.gather(*tasks)
+    
+    @classmethod
+    async def predict(cls, delay, session, success_counter):
+        await asyncio.sleep(delay)
+        async with getattr(session, cls.http_method)(cls.endpoint, data=cls.get_request_data()) as response:
+            response = await response.text()
+            response = json.loads(response)
+            success_counter.value += 1
+            cls.process_response(response)
+            return 1
+
+    @classmethod
+    def get_request_data(cls) -> str:
+        return None
+    
+    @classmethod
+    def process_response(cls, response: json):
+        pass
