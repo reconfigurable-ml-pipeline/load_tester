@@ -1,6 +1,6 @@
 import time
 import json
-from typing import List
+from typing import List, Tuple
 import numpy as np
 from multiprocessing import Process, Value
 import asyncio
@@ -66,17 +66,18 @@ class BarAzmoon:
     @classmethod
     async def predict(cls, delay, session, success_counter):
         await asyncio.sleep(delay)
-        async with getattr(session, cls.http_method)(cls.endpoint, data=cls.get_request_data()) as response:
+        data_id, data = cls.get_request_data()
+        async with getattr(session, cls.http_method)(cls.endpoint, data=data) as response:
             response = await response.text()
             response = json.loads(response)
             success_counter.value += 1
-            cls.process_response(response)
+            cls.process_response(data_id, response)
             return 1
 
     @classmethod
-    def get_request_data(cls) -> str:
-        return None
+    def get_request_data(cls) -> Tuple[str, str]:
+        return None, None
     
     @classmethod
-    def process_response(cls, response: json):
+    def process_response(cls, data_id: str, response: dict):
         pass
