@@ -46,11 +46,11 @@ class BarAzmoon:
                         procs.append(p)
             processes = procs
         
-        return (self.counter.value, self.counter - self.success_counter.value)
+        return (self.counter.value, self.counter.value - self.success_counter.value)
 
     @classmethod
     def target_process(cls, count, counter, success_counter):
-        asyncio.run(BarAzmoon.generate_load_for_second(count, counter, success_counter))
+        asyncio.run(cls.generate_load_for_second(count, counter, success_counter))
 
     @classmethod
     async def generate_load_for_second(cls, count, counter, success_counter):
@@ -58,7 +58,7 @@ class BarAzmoon:
             delays = np.cumsum(np.random.exponential(1 / count, count))
             tasks = []
             for i in range(count):
-                task = asyncio.ensure_future(BarAzmoon.predict(delays[i], session, success_counter))
+                task = asyncio.ensure_future(cls.predict(delays[i], session, success_counter))
                 tasks.append(task)
                 counter.value += 1
             await asyncio.gather(*tasks)
