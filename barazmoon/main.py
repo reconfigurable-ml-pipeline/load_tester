@@ -37,15 +37,40 @@ class BarAzmoon:
                     p: Process = processes[i]
                     if p.exitcode is None:
                         timed_out_seconds += 1
+                        p.kill()
                     else:
                         successful_seconds += 1
-                    p.kill()
+                        p.join()
             else:
                 for p in processes:
                     if p.exitcode is None:
                         procs.append(p)
+                    else:
+                        successful_seconds += 1
             processes = procs
         
+        print("Spawned all the processes. Status of processes till now is:")
+        print(f"total seconds: {total_seconds}, successful seconds: {successful_seconds}, timedout seconds: {timed_out_seconds}")
+        if self.timeout:
+            print(f"Waiting for {self.timeout} seconds...")
+            time.sleep(self.timeout)
+            for p in processes:
+                if p.exitcode is None:
+                    timed_out_seconds += 1
+                    p.kill()
+                else:
+                    successful_seconds += 1
+                    p.join()
+        else:
+            print("Waiting for processes to finish...")
+            for p in processes:
+                p.join()
+
+        print("Final status of processes is:")
+        print(
+            f"total seconds: {total_seconds}, successful seconds: {successful_seconds}, timedout seconds: {timed_out_seconds}"
+        )
+
         return (self.counter.value, self.counter.value - self.success_counter.value)
 
     @classmethod
