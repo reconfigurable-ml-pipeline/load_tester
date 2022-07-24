@@ -80,7 +80,7 @@ class BarAzmoon:
     @classmethod
     async def generate_load_for_second(cls, count, counter, success_counter):
         async with ClientSession() as session:
-            delays = np.cumsum(np.random.exponential(1 / count, count))
+            delays = np.cumsum(np.random.exponential(1 / count, count) / 2)
             tasks = []
             for i in range(count):
                 task = asyncio.ensure_future(cls.predict(delays[i], session, success_counter))
