@@ -1,5 +1,4 @@
 import time
-import json
 from typing import List, Tuple
 import numpy as np
 from multiprocessing import Process, Value, active_children
@@ -21,8 +20,6 @@ class BarAzmoon:
     
     def start(self):
         total_seconds = 0
-        successful_seconds = 0
-        timed_out_seconds = 0
         for rate in self.__workload:
             total_seconds += 1
             self.__counter += rate
@@ -35,7 +32,7 @@ class BarAzmoon:
         for p in active_children():
             p.join()
         
-        print(f"total seconds: {total_seconds}, successful seconds: {successful_seconds}, timedout seconds: {timed_out_seconds}")
+        print(f"total seconds: {total_seconds}")
 
         return (self.__counter, self.__counter - self.__success_counter.value)
 
