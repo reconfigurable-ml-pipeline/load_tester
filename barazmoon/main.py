@@ -56,8 +56,9 @@ class BarAzmoon:
         data_id, data = cls.get_request_data()
         async with getattr(session, cls.http_method)(cls.endpoint, data=data) as response:
             response = await response.json()
-            loop = asyncio.get_event_loop()
-            await loop.run_in_executor(None, cls.increment_value, success_counter)
+            if "error" not in response.keys():
+                loop = asyncio.get_event_loop()
+                await loop.run_in_executor(None, cls.increment_value, success_counter)
             cls.process_response(data_id, response)
             return 1
     
