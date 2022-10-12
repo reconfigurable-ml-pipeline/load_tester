@@ -1,5 +1,5 @@
 import time
-from typing import List, Tuple
+from typing import Iterable, List, Tuple
 import numpy as np
 from multiprocessing import Process, Value, active_children
 import asyncio
@@ -57,7 +57,8 @@ class BarAzmoon:
         await asyncio.sleep(delay)
         data_id, data = self.get_request_data()
         async with getattr(
-            session, self.http_method)(self.endpoint, data=data) as response:
+            session, self.http_method)(
+                self.endpoint, data=data) as response:
             response = await response.json()
             if "error" not in response.keys():
                 loop = asyncio.get_event_loop()
@@ -73,29 +74,39 @@ class BarAzmoon:
         return None, None
     
     def process_response(self, data_id: str, response: dict):
+        """
+        response fetch logic
+        e.g. prining
+        """
         pass
 
-class SeldonBarAzmoon(BarAzmoon):
-    def set_seldon_params(
-        self, gateway_endpoint, deployment_name, namespace):
-        self.sc = SeldonClient(
-            gateway_endpoint=gateway_endpoint,
-            gateway="istio",
-            transport="rest",
-            deployment_name=deployment_name,
-            namespace=namespace)
+# class SeldonBarAzmoon(BarAzmoon):
+#     def set_seldon_params(
+#         self, gateway_endpoint, deployment_name, namespace):
+#         self.sc = SeldonClient(
+#             gateway_endpoint=gateway_endpoint,
+#             gateway="istio",
+#             transport="rest",
+#             deployment_name=deployment_name,
+#             namespace=namespace)
 
-    async def predict(self, delay, session, success_counter):
-        await asyncio.sleep(delay)
-        data_id, data = self.get_request_data()
-        async with self.sc.predict(inputs = data) as response:
-            if response.success:
-                json_data_timer = response.response['jsonData']['time']
-                return 1
+#     async def predict(self, delay, session, success_counter):
+#         await asyncio.sleep(delay)
+#         data_id, data = self.get_request_data()
+#         async with self.sc.predict(inputs = data) as response:
+#             if response.success:
+#                 json_data_timer = response.response['jsonData']['time']
+#                 return 1
 
 class MLServerBarAzmoon(BarAzmoon):
-    def __init__(self, endpoint, http_method, workload):
+    def __init__(
+        self, endpoint: str, http_method: str,
+        workload: Iterable, data: List,
+        data_shape: List, data_type: str):
         self._workload = workload
+        self.data = data
+        self.data_shape = data_shape
+        self.data_type = data_type
         super().__init__(endpoint, http_method)
 
     def get_workload(self) -> List[int]:
@@ -109,7 +120,6 @@ class MLServerBarAzmoon(BarAzmoon):
             session, self.http_method)(
                 self.endpoint, json=data) as response:
             response = await response.json()
-            print(response)
             if "error" not in response.keys():
                 loop = asyncio.get_event_loop()
                 await loop.run_in_executor(
@@ -117,16 +127,60 @@ class MLServerBarAzmoon(BarAzmoon):
             return 1
     
     def get_request_data(self) -> Tuple[str, str]:
-        input_ins = {
-            "name": "parameters-np",
-            "datatype": "FP32",
-            "shape": [2, 1],
-            "data": [1, 2],
-            "parameters": {
-                "content_type": "np"
+        if self.data_type == 'example':
+            payload = {
+                "inputs": [
+                    {
+                        "name": "parameters-np",
+                        "datatype": "FP32",
+                        "shape": self.data_shape,
+                        "data": self.data,
+                        "parameters": {
+                            "content_type": "np"
+                        }
+                    }]
                 }
+        elif self.data_type == 'audio':
+            payload = {
+                "inputs": [
+                    {
+                    "name": "array_inputs",
+                    "shape": self.data_shape,
+                    "datatype": "FP32",
+                    "data": self.data,
+                    "parameters": {
+                        "content_type": "np"
+                    }
+                    }
+                ]
             }
-        payload = {
-            "inputs": [input_ins]
-        }
+        elif self.data_type == 'text':
+            payload = {
+                "inputs": [
+                    {
+                        "name": "text_inputs",
+                        "shape": [1],
+                        "datatype": "BYTES",
+                        "data": self.data,
+                        "parameters": {
+                            "content_type": "str"
+                        }
+                    }
+                ]
+            }
+        elif self.data_type == 'image':
+            payload = {
+                "inputs":[
+                    {
+                        "name": "parameters-np",
+                        "datatype": "INT32",
+                        "shape": self.data_shape,
+                        "data": self.data,
+                        "parameters": {
+                            "content_type": "np"
+                            }
+                    }]
+                }
+        else:
+            raise ValueError(f'Unkown datatype {self.data_type}')
         return payload
