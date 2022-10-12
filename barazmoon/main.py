@@ -8,10 +8,10 @@ from seldon_core.seldon_client import SeldonClient
 
 
 class BarAzmoon:
-    def __init__(self):
-        self.endpoint: str = None
+    def __init__(self, endpoint, http_method):
+        self.endpoint: str = endpoint
         # timeout: int = None  # timeout: seconds to wait for server to respond to request, ignore when timed out
-        self.http_method = "get"
+        self.http_method = http_method
         self._workload = self.get_workload()
         self._success_counter = Value("i", 0)  # Actually, those who did not timed out
         self._counter = 0
@@ -66,7 +66,7 @@ class BarAzmoon:
             self.process_response(data_id, response)
             return 1
     
-    def increment_value(value):
+    def increment_value(self, value):
         value.value += 1
 
     def get_request_data(self) -> Tuple[str, str]:
@@ -94,6 +94,13 @@ class SeldonBarAzmoon(BarAzmoon):
                 return 1
 
 class MLServerBarAzmoon(BarAzmoon):
+    def __init__(self, endpoint, http_method, workload):
+        self._workload = workload
+        super().__init__(endpoint, http_method)
+
+    def get_workload(self) -> List[int]:
+        return self._workload
+
     async def predict(self, delay, session, success_counter):
         await asyncio.sleep(delay)
         data = self.get_request_data()
