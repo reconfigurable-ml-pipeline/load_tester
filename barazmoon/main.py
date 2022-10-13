@@ -4,6 +4,7 @@ import numpy as np
 from multiprocessing import Process, active_children
 import asyncio
 from aiohttp import ClientSession
+import json
 
 
 class BarAzmoon:
@@ -57,3 +58,78 @@ class BarAzmoon:
     
     def process_response(self, data_id: str, response: dict):
         pass
+
+
+class MLServerBarAzmoon(BarAzmoon):
+    async def predict(self, delay, session):
+        await asyncio.sleep(delay)
+        data_id, data = self.get_request_data()
+        async with getattr(session, self.http_method)(self.endpoint, json=data) as response:
+            print(await response.text())
+            print("*"*50)
+            response = await response.json()
+            print("*"*50)
+            self.process_response(data_id, response)
+            return 1
+
+    def get_request_data(self) -> Tuple[str, str]:
+        if self.kwargs['data_type'] == 'example':
+            payload = {
+                "inputs": [
+                    {
+                        "name": "parameters-np",
+                        "datatype": "FP32",
+                        "shape": self.kwargs['data_shape'],
+                        "data": self.kwargs['data'],
+                        "parameters": {
+                            "content_type": "np"
+                        }
+                    }]
+                }
+        elif self.kwargs['data_type'] == 'audio':
+            payload = {
+                "inputs": [
+                    {
+                    "name": "array_inputs",
+                    "shape": self.kwargs['data_shape'],
+                    "datatype": "FP32",
+                    "data": self.kwargs['data'],
+                    "parameters": {
+                        "content_type": "np"
+                    }
+                    }
+                ]
+            }
+        elif self.kwargs['data_type'] == 'text':
+            payload = {
+                "inputs": [
+                    {
+                        "name": "text_inputs",
+                        "shape": [1],
+                        "datatype": "BYTES",
+                        "data": self.kwargs['data'],
+                        "parameters": {
+                            "content_type": "str"
+                        }
+                    }
+                ]
+            }
+        elif self.kwargs['data_type'] == 'image':
+            payload = {
+                "inputs":[
+                    {
+                        "name": "parameters-np",
+                        "datatype": "INT32",
+                        "shape": self.kwargs['data_shape'],
+                        "data": self.kwargs['data'],
+                        "parameters": {
+                            "content_type": "np"
+                            }
+                    }]
+                }
+        else:
+            raise ValueError(f"Unkown datatype {self.kwargs['data_type']}")
+        return None, payload
+
+    def process_response(self, data_id: str, response: dict):
+        print(response)
