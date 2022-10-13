@@ -4,7 +4,9 @@ import numpy as np
 from multiprocessing import Process, active_children
 import asyncio
 from aiohttp import ClientSession
+import aiohttp.payload as aiohttp_payload
 import json
+
 
 
 class BarAzmoon:
@@ -61,16 +63,6 @@ class BarAzmoon:
 
 
 class MLServerBarAzmoon(BarAzmoon):
-    async def predict(self, delay, session):
-        await asyncio.sleep(delay)
-        data_id, data = self.get_request_data()
-        async with getattr(session, self.http_method)(self.endpoint, json=data) as response:
-            print(await response.text())
-            print("*"*50)
-            response = await response.json()
-            print("*"*50)
-            self.process_response(data_id, response)
-            return 1
 
     def get_request_data(self) -> Tuple[str, str]:
         if self.kwargs['data_type'] == 'example':
@@ -129,7 +121,7 @@ class MLServerBarAzmoon(BarAzmoon):
                 }
         else:
             raise ValueError(f"Unkown datatype {self.kwargs['data_type']}")
-        return None, payload
+        return None, aiohttp_payload.JsonPayload(payload)
 
     def process_response(self, data_id: str, response: dict):
         print(response)
