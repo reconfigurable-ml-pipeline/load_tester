@@ -5,9 +5,6 @@ from multiprocessing import Process, active_children
 import asyncio
 from aiohttp import ClientSession
 import aiohttp.payload as aiohttp_payload
-import json
-
-
 
 class BarAzmoon:
     def __init__(self, *, workload: List[int], endpoint: str, http_method = "get", **kwargs):
@@ -63,7 +60,6 @@ class BarAzmoon:
 
 
 class MLServerBarAzmoon(BarAzmoon):
-
     def get_request_data(self) -> Tuple[str, str]:
         if self.kwargs['data_type'] == 'example':
             payload = {
