@@ -48,7 +48,7 @@ class BarAzmoon:
         await asyncio.sleep(delay)
         data_id, data = self.get_request_data()
         async with getattr(session, self.http_method)(self.endpoint, data=data) as response:
-            response = await response.json()
+            response = await response.json(content_type=None)
             self.process_response(data_id, response)
             return 1
     
