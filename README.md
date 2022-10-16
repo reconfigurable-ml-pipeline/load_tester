@@ -1,6 +1,6 @@
 # Web Service Load Tester
 
-> REST-based load tester implemented using asyncio and multiprocessing
+> REST and json-based load tester implemented using asyncio and multiprocessing
 
 ### Usage
 ---
