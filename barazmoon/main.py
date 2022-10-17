@@ -1,10 +1,17 @@
 import time
 from typing import List, Tuple
+from urllib import request
 import numpy as np
 from multiprocessing import Process, active_children
 import asyncio
 from aiohttp import ClientSession
 import aiohttp.payload as aiohttp_payload
+from copy import deepcopy
+from multiprocessing import Queue
+
+MAX_QUEUE_SIZE = 1000000
+
+queue = Queue(MAX_QUEUE_SIZE)
 
 class BarAzmoon:
     def __init__(self, *, workload: List[int], endpoint: str, http_method = "get", **kwargs):
@@ -13,13 +20,14 @@ class BarAzmoon:
         self.__workload = (rate for rate in workload)
         self.__counter = 0
         self.kwargs = kwargs
-    
+
     def start(self):
         total_seconds = 0
         for rate in self.__workload:
             total_seconds += 1
             self.__counter += rate
-            generator_process = Process(target=self.target_process, args=(rate,))
+            generator_process = Process(
+                target=self.target_process, args=(rate,))
             generator_process.daemon = True
             generator_process.start()
             active_children()
@@ -47,8 +55,11 @@ class BarAzmoon:
     async def predict(self, delay, session):
         await asyncio.sleep(delay)
         data_id, data = self.get_request_data()
+        # print('requesting', self.__counter, data)
         async with getattr(session, self.http_method)(self.endpoint, data=data) as response:
+        # async with getattr(session, self.http_method)(self.endpoint, json=data) as response:
             response = await response.json()
+            queue.put(response)
             self.process_response(data_id, response)
             return 1
     
@@ -58,10 +69,25 @@ class BarAzmoon:
     def process_response(self, data_id: str, response: dict):
         pass
 
+    def get_responses(self):
+        outputs = [queue.get() for _ in range(queue.qsize())]
+        return outputs
+
 
 class MLServerBarAzmoon(BarAzmoon):
+    # responses = []
+    # response_ids = 0
+    def __init__(self, *, workload: List[int], endpoint: str, http_method="get", **kwargs):
+
+        super().__init__(
+            workload=workload, endpoint=endpoint,
+            http_method=http_method, **kwargs)
+        self.data_type = self.kwargs['data_type']
+        # self.responses = {}
+        # self.response_ids = -1
+
     def get_request_data(self) -> Tuple[str, str]:
-        if self.kwargs['data_type'] == 'example':
+        if self.data_type == 'example':
             payload = {
                 "inputs": [
                     {
@@ -74,7 +100,7 @@ class MLServerBarAzmoon(BarAzmoon):
                         }
                     }]
                 }
-        elif self.kwargs['data_type'] == 'audio':
+        elif self.data_type == 'audio':
             payload = {
                 "inputs": [
                     {
@@ -88,12 +114,12 @@ class MLServerBarAzmoon(BarAzmoon):
                     }
                 ]
             }
-        elif self.kwargs['data_type'] == 'text':
+        elif self.data_type == 'text':
             payload = {
                 "inputs": [
                     {
                         "name": "text_inputs",
-                        "shape": [1],
+                        "shape": self.kwargs['data_shape'],
                         "datatype": "BYTES",
                         "data": self.kwargs['data'],
                         "parameters": {
@@ -102,7 +128,7 @@ class MLServerBarAzmoon(BarAzmoon):
                     }
                 ]
             }
-        elif self.kwargs['data_type'] == 'image':
+        elif self.data_type == 'image':
             payload = {
                 "inputs":[
                     {
@@ -120,4 +146,11 @@ class MLServerBarAzmoon(BarAzmoon):
         return None, aiohttp_payload.JsonPayload(payload)
 
     def process_response(self, data_id: str, response: dict):
-        print(response)
+        if self.data_type == 'image':
+            print(f"{data_id}=")
+            print(f"{response.keys()=}")
+        else:
+            print(f"{data_id}=")
+            print(response)
+
+    
