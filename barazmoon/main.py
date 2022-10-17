@@ -75,16 +75,12 @@ class BarAzmoon:
 
 
 class MLServerBarAzmoon(BarAzmoon):
-    # responses = []
-    # response_ids = 0
     def __init__(self, *, workload: List[int], endpoint: str, http_method="get", **kwargs):
 
         super().__init__(
             workload=workload, endpoint=endpoint,
             http_method=http_method, **kwargs)
         self.data_type = self.kwargs['data_type']
-        # self.responses = {}
-        # self.response_ids = -1
 
     def get_request_data(self) -> Tuple[str, str]:
         if self.data_type == 'example':
