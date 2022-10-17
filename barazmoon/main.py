@@ -58,7 +58,7 @@ class BarAzmoon:
         # print('requesting', self.__counter, data)
         async with getattr(session, self.http_method)(self.endpoint, data=data) as response:
         # async with getattr(session, self.http_method)(self.endpoint, json=data) as response:
-            response = await response.json()
+            response = await response.json(content_type=None)
             queue.put(response)
             self.process_response(data_id, response)
             return 1
@@ -148,5 +148,3 @@ class MLServerBarAzmoon(BarAzmoon):
         else:
             print(f"{data_id}=")
             print(response)
-
-    
