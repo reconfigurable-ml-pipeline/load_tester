@@ -1,20 +1,20 @@
 import time
 from typing import List, Tuple
-from urllib import request
 import numpy as np
 from multiprocessing import Process, active_children
 import asyncio
-from aiohttp import ClientSession
+from aiohttp import ClientSession, ClientTimeout
 import aiohttp.payload as aiohttp_payload
-from copy import deepcopy
 from multiprocessing import Queue
 
 MAX_QUEUE_SIZE = 1000000
-
+TIMEOUT = 20 * 60
 queue = Queue(MAX_QUEUE_SIZE)
-
+ 
 class BarAzmoon:
-    def __init__(self, *, workload: List[int], endpoint: str, http_method = "get", **kwargs):
+    def __init__(
+        self, *, workload: List[int], endpoint: str,
+        http_method = "get", **kwargs):
         self.endpoint = endpoint
         self.http_method = http_method
         self.__workload = (rate for rate in workload)
@@ -44,8 +44,10 @@ class BarAzmoon:
         asyncio.run(self.generate_load_for_second(count))
 
     async def generate_load_for_second(self, count):
-        async with ClientSession() as session:
-            delays = np.cumsum(np.random.exponential(1 / (count * 1.5), count))
+        timeout = ClientTimeout(total=TIMEOUT)
+        async with ClientSession(timeout=timeout) as session:
+            delays = np.cumsum(np.random.exponential(
+                1 / (count * 1.5), count))
             tasks = []
             for i in range(count):
                 task = asyncio.ensure_future(self.predict(delays[i], session))
@@ -55,9 +57,9 @@ class BarAzmoon:
     async def predict(self, delay, session):
         await asyncio.sleep(delay)
         data_id, data = self.get_request_data()
-        # print('requesting', self.__counter, data)
-        async with getattr(session, self.http_method)(self.endpoint, data=data) as response:
-        # async with getattr(session, self.http_method)(self.endpoint, json=data) as response:
+        async with getattr(
+            session, self.http_method)(
+                self.endpoint, data=data) as response:
             response = await response.json(content_type=None)
             queue.put(response)
             self.process_response(data_id, response)
@@ -75,8 +77,9 @@ class BarAzmoon:
 
 
 class MLServerBarAzmoon(BarAzmoon):
-    def __init__(self, *, workload: List[int], endpoint: str, http_method="get", **kwargs):
-
+    def __init__(
+        self, *, workload: List[int],
+        endpoint: str, http_method="get", **kwargs):
         super().__init__(
             workload=workload, endpoint=endpoint,
             http_method=http_method, **kwargs)
@@ -144,7 +147,7 @@ class MLServerBarAzmoon(BarAzmoon):
     def process_response(self, data_id: str, response: dict):
         if self.data_type == 'image':
             print(f"{data_id}=")
-            print(f"{response.keys()=}")
+            # print(f"{response.keys()=}")
         else:
             print(f"{data_id}=")
             print(response)
