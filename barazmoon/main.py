@@ -1,58 +1,81 @@
 import time
 from typing import List, Tuple
 import numpy as np
-from multiprocessing import Process, active_children
+from multiprocessing import Process, active_children, Lock
 import asyncio
 from aiohttp import ClientSession, ClientTimeout
 import aiohttp.payload as aiohttp_payload
-from multiprocessing import Queue
+from numpy.random import default_rng
+import aiohttp
+import asyncio
+# from multiprocessing import Queue
 
-MAX_QUEUE_SIZE = 1000000
-TIMEOUT = 20 * 60
-queue = Queue(MAX_QUEUE_SIZE)
- 
-class BarAzmoon:
+
+# MAX_QUEUE_SIZE = 1000000
+# TIMEOUT = 20 * 60
+# queue = Queue(MAX_QUEUE_SIZE)
+# lock = Lock()
+
+# ============= Async + Process based load tester =============
+
+# TODO problems:
+# 1. high process load -> not closing finished processes on time
+# 2. having a way to save the responses recieved from the load-tester
+
+class BarAzmoonProcess:
     def __init__(
         self, *, workload: List[int], endpoint: str,
         http_method = "get", **kwargs):
         self.endpoint = endpoint
         self.http_method = http_method
-        self.__workload = (rate for rate in workload)
-        self.__counter = 0
+        self._workload = (rate for rate in workload)
+        self._counter = 0
         self.kwargs = kwargs
 
     def start(self):
         total_seconds = 0
-        for rate in self.__workload:
+        for rate in self._workload:
             total_seconds += 1
-            self.__counter += rate
+            self._counter += rate
             generator_process = Process(
-                target=self.target_process, args=(rate,))
+                # target=self.target_process, args=(rate, queue, ))
+                target=self.target_process, args=(rate, total_seconds, ))
             generator_process.daemon = True
             generator_process.start()
             active_children()
             time.sleep(1)
+        print(f"{len(active_children())}=")
         print("Spawned all the processes. Waiting to finish...")
         for p in active_children():
             p.join()
         
         print(f"total seconds: {total_seconds}")
 
-        return self.__counter, total_seconds
+        return self._counter, total_seconds
 
-    def target_process(self, count):
-        asyncio.run(self.generate_load_for_second(count))
+    # def target_process(self, count, queue):
+    def target_process(self, count, second):
+        asyncio.run(self.generate_load_for_second(count, ))
+        responses = asyncio.run(self.generate_load_for_second(count, ))
+        print('-'*50)
+        print(f"{second=}")
+        for response in responses:
+            print(response)
+        # for response in responses:
+        #     queue.put(response)
+        print()
 
     async def generate_load_for_second(self, count):
-        timeout = ClientTimeout(total=TIMEOUT)
-        async with ClientSession(timeout=timeout) as session:
+        # timeout = ClientTimeout(total=TIMEOUT)
+        # async with ClientSession(timeout=timeout) as session:
+        async with ClientSession() as session:
             delays = np.cumsum(np.random.exponential(
                 1 / (count * 1.5), count))
             tasks = []
             for i in range(count):
                 task = asyncio.ensure_future(self.predict(delays[i], session))
                 tasks.append(task)
-            await asyncio.gather(*tasks)
+            return await asyncio.gather(*tasks)
     
     async def predict(self, delay, session):
         await asyncio.sleep(delay)
@@ -60,10 +83,14 @@ class BarAzmoon:
         async with getattr(
             session, self.http_method)(
                 self.endpoint, data=data) as response:
+            # print('-'*25, 'request sent!', '-'*25)
             response = await response.json(content_type=None)
-            queue.put(response)
-            self.process_response(data_id, response)
-            return 1
+            # lock.acquire()
+            # queue.put(response)
+            # lock.release()
+            # print('')
+            # self.process_response(data_id, response)
+            return response
     
     def get_request_data(self) -> Tuple[str, str]:
         return None, None
@@ -71,83 +98,75 @@ class BarAzmoon:
     def process_response(self, data_id: str, response: dict):
         pass
 
-    def get_responses(self):
-        outputs = [queue.get() for _ in range(queue.qsize())]
-        return outputs
+    # def get_responses(self):
+    #     outputs = [queue.get() for _ in range(queue.qsize())]
+    #     return outputs
 
+# ============= Pure Async based load tester =============
 
-class MLServerBarAzmoon(BarAzmoon):
-    def __init__(
-        self, *, workload: List[int],
-        endpoint: str, http_method="get", **kwargs):
-        super().__init__(
-            workload=workload, endpoint=endpoint,
-            http_method=http_method, **kwargs)
-        self.data_type = self.kwargs['data_type']
+# TODO integrate
 
-    def get_request_data(self) -> Tuple[str, str]:
-        if self.data_type == 'example':
-            payload = {
-                "inputs": [
-                    {
-                        "name": "parameters-np",
-                        "datatype": "FP32",
-                        "shape": self.kwargs['data_shape'],
-                        "data": self.kwargs['data'],
-                        "parameters": {
-                            "content_type": "np"
-                        }
-                    }]
-                }
-        elif self.data_type == 'audio':
-            payload = {
-                "inputs": [
-                    {
-                    "name": "array_inputs",
-                    "shape": self.kwargs['data_shape'],
-                    "datatype": "FP32",
-                    "data": self.kwargs['data'],
-                    "parameters": {
-                        "content_type": "np"
-                    }
-                    }
-                ]
-            }
-        elif self.data_type == 'text':
-            payload = {
-                "inputs": [
-                    {
-                        "name": "text_inputs",
-                        "shape": self.kwargs['data_shape'],
-                        "datatype": "BYTES",
-                        "data": self.kwargs['data'],
-                        "parameters": {
-                            "content_type": "str"
-                        }
-                    }
-                ]
-            }
-        elif self.data_type == 'image':
-            payload = {
-                "inputs":[
-                    {
-                        "name": "parameters-np",
-                        "datatype": "INT32",
-                        "shape": self.kwargs['data_shape'],
-                        "data": self.kwargs['data'],
-                        "parameters": {
-                            "content_type": "np"
-                            }
-                    }]
-                }
+async def request_after(session, url, wait, payload):
+    if wait:
+        await asyncio.sleep(wait)
+    async with session.post(url, data=payload) as resp:
+        if resp.status != 200:
+            resp = {'failed': await resp.text()}  # TODO: maybe raise!
         else:
-            raise ValueError(f"Unkown datatype {self.kwargs['data_type']}")
-        return None, aiohttp_payload.JsonPayload(payload)
+            resp = await resp.json()
+        return resp
 
-    def process_response(self, data_id: str, response: dict):
-        if self.data_type == 'image':
-            print(f"{data_id}=")
-            # print(f"{response.keys()=}")
-        else:
-            print(f"{data_id}=")
-            print(response)
+class BarAzmoonAsync:
+    def __init__(self, endpoint, payload, benchmark_duration=1):
+        """
+        endpoint:
+            the http path the load testing endpoint
+        payload:
+            data to the be sent
+        """
+        self.endpoint = endpoint
+        self.payload = payload
+        self.session = aiohttp.ClientSession()
+        self.responses = []
+        self.duration = benchmark_duration
+
+    async def benchmark(self, request_counts):
+        tasks = []
+        for i, req_count in enumerate(request_counts):
+            tasks.append(
+                asyncio.ensure_future(
+                    self.submit_requests_after(i * self.duration, req_count, self.duration)
+                ))
+        await asyncio.gather(*tasks)
+
+    async def submit_requests_after(self, after, req_count, duration):
+        if after:
+            await asyncio.sleep(after)
+        tasks = []
+        beta = duration / req_count
+        start = time.time()
+
+        rng = default_rng()
+        arrival = rng.exponential(beta, req_count)
+
+        for i in range(req_count):
+            tasks.append(asyncio.ensure_future(
+                request_after(
+                    self.session,
+                    self.endpoint,
+                    wait=arrival[i],
+                    payload=self.payload
+                )
+            ))
+
+        resps = await asyncio.gather(*tasks)
+
+        elapsed = time.time() - start
+        if elapsed < duration:
+            await asyncio.sleep(duration-elapsed)
+
+        self.responses.append(resps)
+        print('total', len(resps))
+
+    async def close(self):
+        await self.session.close()
