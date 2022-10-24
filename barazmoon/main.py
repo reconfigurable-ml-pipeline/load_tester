@@ -104,17 +104,26 @@ class BarAzmoonProcess:
 
 # ============= Pure Async based load tester =============
 
-# TODO integrate
 
 async def request_after(session, url, wait, payload):
     if wait:
         await asyncio.sleep(wait)
+    sending_time = time.time()
     async with session.post(url, data=payload) as resp:
         if resp.status != 200:
             resp = {'failed': await resp.text()}  # TODO: maybe raise!
         else:
             resp = await resp.json()
+        arrival_time = time.time()
+        timing = {
+            'timing':{
+                'sending_time': sending_time,
+                'arrival_time': arrival_time
+            }
+        }
+        resp.update(timing)
         return resp
+
 
 class BarAzmoonAsync:
     def __init__(self, endpoint, payload, benchmark_duration=1):
@@ -135,7 +144,8 @@ class BarAzmoonAsync:
         for i, req_count in enumerate(request_counts):
             tasks.append(
                 asyncio.ensure_future(
-                    self.submit_requests_after(i * self.duration, req_count, self.duration)
+                    self.submit_requests_after(
+                        i * self.duration, req_count, self.duration)
                 ))
         await asyncio.gather(*tasks)
 
@@ -149,6 +159,7 @@ class BarAzmoonAsync:
         rng = default_rng()
         arrival = rng.exponential(beta, req_count)
 
+        print(f'Sending {req_count} requests sent in {time.ctime()} at timestep {after}')
         for i in range(req_count):
             tasks.append(asyncio.ensure_future(
                 request_after(
@@ -158,7 +169,6 @@ class BarAzmoonAsync:
                     payload=self.payload
                 )
             ))
-
         resps = await asyncio.gather(*tasks)
 
         elapsed = time.time() - start
@@ -166,7 +176,7 @@ class BarAzmoonAsync:
             await asyncio.sleep(duration-elapsed)
 
         self.responses.append(resps)
-        print('total', len(resps))
+        print(f'Recieving {len(resps)} requests sent in {time.ctime()} at timestep {after}')
 
     async def close(self):
         await self.session.close()

@@ -87,7 +87,7 @@ class MLServerAsync:
     def __init__(
         self, *, workload: List[int], endpoint: str,
         data: Any, data_shape: List[int],
-        data_type: str, http_method = "get",
+        data_type: str, http_method = "post",
         **kwargs,):
         self.endpoint = endpoint
         self.http_method = http_method
@@ -140,7 +140,7 @@ class MLServerAsync:
                         "name": "text_inputs",
                         "shape": self.data_shape,
                         "datatype": "BYTES",
-                        "data": self.data,
+                        "data": [self.data],
                         "parameters": {
                             "content_type": "str"
                         }
