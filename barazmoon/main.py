@@ -1,10 +1,9 @@
 import time
 from typing import List, Tuple
 import numpy as np
-from multiprocessing import Process, active_children, Lock
+from multiprocessing import Process, active_children #, Lock
 import asyncio
-from aiohttp import ClientSession, ClientTimeout
-import aiohttp.payload as aiohttp_payload
+from aiohttp import ClientSession #, ClientTimeout
 from numpy.random import default_rng
 import aiohttp
 import asyncio
@@ -109,20 +108,23 @@ async def request_after(session, url, wait, payload):
     if wait:
         await asyncio.sleep(wait)
     sending_time = time.time()
-    async with session.post(url, data=payload) as resp:
-        if resp.status != 200:
-            resp = {'failed': await resp.text()}  # TODO: maybe raise!
-        else:
-            resp = await resp.json()
-        arrival_time = time.time()
-        timing = {
-            'timing':{
-                'sending_time': sending_time,
-                'arrival_time': arrival_time
+    try:
+        async with session.post(url, data=payload) as resp:
+            if resp.status != 200:
+                resp = {'failed': await resp.text()}  # TODO: maybe raise!
+            else:
+                resp = await resp.json()
+            arrival_time = time.time()
+            timing = {
+                'timing':{
+                    'sending_time': sending_time,
+                    'arrival_time': arrival_time
+                }
             }
-        }
-        resp.update(timing)
-        return resp
+            resp.update(timing)
+            return resp
+    except asyncio.exceptions.TimeoutError:
+        return {'failed': 'timeout'}
 
 
 class BarAzmoonAsync:
