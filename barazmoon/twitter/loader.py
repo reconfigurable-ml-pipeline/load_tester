@@ -57,4 +57,10 @@ def twitter_workload_generator(days):
         end = end * seconds_per_day
         return workload_all[first:end]
 
-print(len(twitter_workload_generator("3:2:2-4:5:3")))
+# print(len(twitter_workload_generator("3:2:2-4:5:3")))
+# print(len(twitter_workload_generator("3-5")))
+# print(len(twitter_workload_generator("3")))
+
+# Use - to show split between days => 3-5
+# Use : to indicate you want give an specific time of day => 3:5:3-5:6:7. 3
+# without using any of  them, you actually say that you want detail of that specific day =
