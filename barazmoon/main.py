@@ -8,6 +8,13 @@ from aiohttp import TCPConnector
 from numpy.random import default_rng
 import aiohttp
 import asyncio
+import grpc
+from mlserver.codecs.string import StringRequestCodec
+import mlserver.grpc.dataplane_pb2_grpc as dataplane
+import mlserver.grpc.converters as converters
+import json
+# from multiprocessing import Queue
+
 
 # from multiprocessing import Queue
 
@@ -106,10 +113,10 @@ class BarAzmoonProcess:
     #     outputs = [queue.get() for _ in range(queue.qsize())]
     #     return outputs
 
-# ============= Pure Async based load tester =============
+# ============= Pure Async Rest based load tester =============
 
 
-async def request_after(session, url, wait, payload):
+async def request_after_rest(session, url, wait, payload):
     if wait:
         await asyncio.sleep(wait)
     sending_time = time.time()
@@ -142,7 +149,7 @@ async def request_after(session, url, wait, payload):
         return resp
 
 
-class BarAzmoonAsync:
+class BarAzmoonAsyncRest:
     def __init__(self, endpoint, payload, benchmark_duration=1):
         """
         endpoint:
@@ -179,7 +186,7 @@ class BarAzmoonAsync:
         print(f'Sending {req_count} requests sent in {time.ctime()} at timestep {after}')
         for i in range(req_count):
             tasks.append(asyncio.ensure_future(
-                request_after(
+                request_after_rest(
                     self.session,
                     self.endpoint,
                     wait=arrival[i],
@@ -197,3 +204,90 @@ class BarAzmoonAsync:
 
     async def close(self):
         await self.session.close()
+
+
+# ============= Pure Async Grpc based load tester =============
+
+async def request_after_grpc(stub, metadata, wait, payload):
+    # TODO
+    if wait:
+        await asyncio.sleep(wait)
+    sending_time = time.time()
+    try:
+        resp = await stub.ModelInfer(
+            request=payload,
+            metadata=metadata)
+
+        inference_response = converters.ModelInferResponseConverter.to_types(resp)
+        raw_json = StringRequestCodec.decode_response(inference_response)
+        resp = json.loads(raw_json[0])
+
+        arrival_time = time.time()
+        timing = {
+            'timing':{
+                'sending_time': sending_time,
+                'arrival_time': arrival_time
+            }
+        }
+        resp.update(timing)
+        return resp
+    except asyncio.exceptions.TimeoutError:
+        return {'failed': 'timeout'}
+    except grpc.RpcError as e:
+        return {'failed': str(e)}
+
+class BarAzmoonAsyncGrpc:
+    # TODO
+    def __init__(self, endpoint, metadata, payload, benchmark_duration=1):
+        """
+        endpoint:
+            the path the load testing endpoint
+        payload:
+            data to the be sent
+        """
+        self.endpoint = endpoint
+        self.payload = payload
+        self.metadata = metadata
+        self.responses = []
+        self.duration = benchmark_duration
+
+    async def benchmark(self, request_counts):
+        async with grpc.aio.insecure_channel(self.endpoint) as ch:
+            self.stub = dataplane.GRPCInferenceServiceStub(ch)
+            tasks = []
+            for i, req_count in enumerate(request_counts):
+                tasks.append(
+                    asyncio.ensure_future(
+                        self.submit_requests_after(
+                            i * self.duration, req_count, self.duration)
+                    ))
+            await asyncio.gather(*tasks)
+
+    async def submit_requests_after(self, after, req_count, duration):
+        if after:
+            await asyncio.sleep(after)
+        tasks = []
+        beta = duration / req_count
+        start = time.time()
+
+        rng = default_rng()
+        arrival = rng.exponential(beta, req_count)
+
+        print(f'Sending {req_count} requests sent in {time.ctime()} at timestep {after}')
+        for i in range(req_count):
+            tasks.append(asyncio.ensure_future(
+                request_after_grpc(
+                    self.stub,
+                    self.metadata,
+                    wait=arrival[i],
+                    payload=self.payload
+                )
+            ))
+        resps = await asyncio.gather(*tasks)
+
+        elapsed = time.time() - start
+        if elapsed < duration:
+            await asyncio.sleep(duration-elapsed)
+
+        self.responses.append(resps)
+        print(f'Recieving {len(resps)} requests sent in {time.ctime()} at timestep {after}')
