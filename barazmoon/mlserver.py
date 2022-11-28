@@ -192,22 +192,7 @@ class MLServerAsyncGrpc:
         return c.responses
 
     def get_request_data(self) -> Tuple[str, str]:
-        # TODO
-        if self.data_type == 'example':
-            # TODO make like audio
-            payload = {
-                "inputs": [
-                    {
-                        "name": "parameters-np",
-                        "datatype": "FP32",
-                        "shape": self.data_shape,
-                        "data": self.data,
-                        "parameters": {
-                            "content_type": "np"
-                        }
-                    }]
-                }
-        elif self.data_type == 'audio':
+        if self.data_type == 'audio':
             payload = types.InferenceRequest(
                 inputs=[
                     types.RequestInput(
@@ -220,34 +205,29 @@ class MLServerAsyncGrpc:
                     ]
                 )
         elif self.data_type == 'text':
-            # TODO make like audio
-            payload = {
-                "inputs": [
-                    {
-                        "name": "text_inputs",
-                        "shape": self.data_shape,
-                        "datatype": "BYTES",
-                        "data": [self.data],
-                        "parameters": {
-                            "content_type": "str"
-                        }
-                    }
-                ]
-            }
+            payload = types.InferenceRequest(
+                inputs=[
+                    types.RequestInput(
+                        name="text_inputs",
+                        shape=[1],
+                        datatype="BYTES",
+                        data=[self.data.encode('utf8')],
+                        parameters=types.Parameters(content_type="str"),
+                        )
+                    ]
+                )
         elif self.data_type == 'image':
-            # TODO make like audio
-            payload = {
-                "inputs":[
-                    {
-                        "name": "parameters-np",
-                        "datatype": "INT32",
-                        "shape": self.data_shape,
-                        "data": self.data,
-                        "parameters": {
-                            "content_type": "np"
-                            }
-                    }]
-                }
+            payload =  types.InferenceRequest(
+                inputs=[
+                    types.RequestInput(
+                    name="parameters-np",
+                    shape=self.data_shape,
+                    datatype="INT32",
+                    data=self.data,
+                    parameters=types.Parameters(content_type="np"),
+                    )
+                ]
+            )
         else:
             raise ValueError(f"Unkown datatype {self.kwargs['data_type']}")
         payload = converters.ModelInferRequestConverter.from_types(
