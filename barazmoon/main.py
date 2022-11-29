@@ -197,22 +197,26 @@ async def request_after_grpc(stub, metadata, wait, payload):
         await asyncio.sleep(wait)
     sending_time = time.time()
     try:
-        resp = await stub.ModelInfer(
+        # making the strucure similar to the rest output
+        resp = {}
+        grpc_resp = await stub.ModelInfer(
             request=payload,
             metadata=metadata)
-
-        inference_response = converters.ModelInferResponseConverter.to_types(resp)
-        raw_json = StringRequestCodec.decode_response(inference_response)
-        resp = json.loads(raw_json[0])
-
         arrival_time = time.time()
+        inference_response = \
+            converters.ModelInferResponseConverter.to_types(grpc_resp)
+        raw_json = StringRequestCodec.decode_response(inference_response)
+        # outputs = {'data': [json.loads(raw_json[0])]}
+        outputs = {'data': raw_json}
         timing = {
             'timing':{
                 'sending_time': sending_time,
                 'arrival_time': arrival_time
             }
         }
-        resp.update(timing)
+        resp['model_name'] = grpc_resp.model_name
+        resp['outputs'] = [outputs]
+        resp.update(timing) 
         return resp
     except asyncio.exceptions.TimeoutError:
         return {'failed': 'timeout'}
