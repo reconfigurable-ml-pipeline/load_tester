@@ -3,7 +3,8 @@ from typing import List, Tuple
 import numpy as np
 from multiprocessing import Process, active_children #, Lock
 import asyncio
-from aiohttp import ClientSession #, ClientTimeout
+from aiohttp import ClientSession, ClientTimeout
+from aiohttp import TCPConnector
 from numpy.random import default_rng
 import aiohttp
 import asyncio
@@ -15,10 +16,16 @@ import json
 # from multiprocessing import Queue
 
 
+# from multiprocessing import Queue
+
 # MAX_QUEUE_SIZE = 1000000
-# TIMEOUT = 20 * 60
 # queue = Queue(MAX_QUEUE_SIZE)
 # lock = Lock()
+
+# TCP_CONNECTIONS = 500
+# connector = TCPConnector(limit=TCP_CONNECTIONS)
+
+TIMEOUT = 20 * 60
 
 # ============= Async + Process based load tester =============
 
@@ -114,14 +121,15 @@ async def request_after_rest(session, url, wait, payload):
         await asyncio.sleep(wait)
     sending_time = time.time()
     try:
-        async with session.post(url, data=payload) as resp:
+        async with session.post(
+            url, data=payload, timeout=TIMEOUT) as resp:
             if resp.status != 200:
                 resp = {'failed': await resp.text()}  # TODO: maybe raise!
             else:
                 resp = await resp.json()
             arrival_time = time.time()
             timing = {
-                'timing':{
+                'time':{
                     'sending_time': sending_time,
                     'arrival_time': arrival_time
                 }
@@ -129,7 +137,16 @@ async def request_after_rest(session, url, wait, payload):
             resp.update(timing)
             return resp
     except asyncio.exceptions.TimeoutError:
-        return {'failed': 'timeout'}
+        resp =  {'failed': 'timeout'}
+        arrival_time = time.time()
+        timing = {
+            'time':{
+                'sending_time': sending_time,
+                'arrival_time': arrival_time
+            }
+        }
+        resp.update(timing)
+        return resp
 
 
 class BarAzmoonAsyncRest:
