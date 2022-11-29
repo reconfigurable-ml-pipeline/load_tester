@@ -206,7 +206,6 @@ async def request_after_grpc(stub, metadata, wait, payload):
         inference_response = \
             converters.ModelInferResponseConverter.to_types(grpc_resp)
         raw_json = StringRequestCodec.decode_response(inference_response)
-        # outputs = {'data': [json.loads(raw_json[0])]}
         outputs = {'data': raw_json}
         timing = {
             'timing':{
