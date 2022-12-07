@@ -3,7 +3,7 @@ from typing import List, Tuple
 import numpy as np
 from multiprocessing import Process, active_children
 import asyncio
-from aiohttp import ClientSession
+from aiohttp import ClientSession, TCPConnector
 
 
 class BarAzmoon:
@@ -36,7 +36,7 @@ class BarAzmoon:
         asyncio.run(self.generate_load_for_second(count))
 
     async def generate_load_for_second(self, count):
-        async with ClientSession() as session:
+        async with ClientSession(connector=TCPConnector(limit=0)) as session:
             delays = np.cumsum(np.random.exponential(1 / (count * 1.5), count))
             tasks = []
             for i in range(count):
