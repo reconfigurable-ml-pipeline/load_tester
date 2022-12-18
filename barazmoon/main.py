@@ -150,7 +150,7 @@ async def request_after_rest(session, url, wait, payload):
 
 
 class BarAzmoonAsyncRest:
-    def __init__(self, endpoint, payload, benchmark_duration=1):
+    def __init__(self, endpoint, payload, mode, benchmark_duration=1):
         """
         endpoint:
             the http path the load testing endpoint
@@ -162,6 +162,7 @@ class BarAzmoonAsyncRest:
         self.session = aiohttp.ClientSession()
         self.responses = []
         self.duration = benchmark_duration
+        self.mode = mode
 
     async def benchmark(self, request_counts):
         tasks = []
@@ -181,8 +182,12 @@ class BarAzmoonAsyncRest:
         start = time.time()
 
         rng = default_rng()
-        arrival = rng.exponential(beta, req_count)
-
+        if self.mode == 'step':
+            arrival = np.zeros(req_count)
+        elif self.mode == 'equal':
+            arrival = np.arange(req_count) * beta
+        elif self.mode == 'exponential':
+            arrival = rng.exponential(beta, req_count)
         print(f'Sending {req_count} requests sent in {time.ctime()} at timestep {after}')
         for i in range(req_count):
             tasks.append(asyncio.ensure_future(
@@ -241,7 +246,7 @@ async def request_after_grpc(stub, metadata, wait, payload):
 
 class BarAzmoonAsyncGrpc:
     # TODO
-    def __init__(self, endpoint, metadata, payload, benchmark_duration=1):
+    def __init__(self, endpoint, metadata, payload, mode, benchmark_duration=1):
         """
         endpoint:
             the path the load testing endpoint
@@ -252,6 +257,7 @@ class BarAzmoonAsyncGrpc:
         self.payload = payload
         self.metadata = metadata
         self.responses = []
+        self.mode = mode
         self.duration = benchmark_duration
 
     async def benchmark(self, request_counts):
@@ -274,8 +280,12 @@ class BarAzmoonAsyncGrpc:
         start = time.time()
 
         rng = default_rng()
-        arrival = rng.exponential(beta, req_count)
-
+        if self.mode == 'step':
+            arrival = np.zeros(req_count)
+        elif self.mode == 'equal':
+            arrival = np.arange(req_count) * beta
+        elif self.mode == 'exponential':
+            arrival = rng.exponential(beta, req_count)
         print(f'Sending {req_count} requests sent in {time.ctime()} at timestep {after}')
         for i in range(req_count):
             tasks.append(asyncio.ensure_future(
