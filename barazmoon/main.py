@@ -12,9 +12,12 @@ import grpc
 from mlserver.codecs.string import StringRequestCodec
 import mlserver.grpc.dataplane_pb2_grpc as dataplane
 import mlserver.grpc.converters as converters
-import json
-# from multiprocessing import Queue
 
+class Data:
+    def __init__(self, data, data_shape, parameters) -> None:
+        self.data=data
+        self.data_shape=data_shape
+        self.parameters=parameters
 
 # from multiprocessing import Queue
 
@@ -32,6 +35,7 @@ TIMEOUT = 20 * 60
 # TODO problems:
 # 1. high process load -> not closing finished processes on time
 # 2. having a way to save the responses recieved from the load-tester
+
 
 class BarAzmoonProcess:
     def __init__(
@@ -245,8 +249,9 @@ async def request_after_grpc(stub, metadata, wait, payload):
         return {'failed': str(e)}
 
 class BarAzmoonAsyncGrpc:
-    # TODO
-    def __init__(self, endpoint, metadata, payload, mode, benchmark_duration=1):
+    def __init__(
+        self, endpoint: str, metadata: str,
+        payloads: List[Data], mode: str, benchmark_duration=1):
         """
         endpoint:
             the path the load testing endpoint
@@ -254,11 +259,12 @@ class BarAzmoonAsyncGrpc:
             data to the be sent
         """
         self.endpoint = endpoint
-        self.payload = payload
+        self.payloads = payloads
         self.metadata = metadata
         self.responses = []
         self.mode = mode
         self.duration = benchmark_duration
+        self.request_index = 0
 
     async def benchmark(self, request_counts):
         async with grpc.aio.insecure_channel(self.endpoint) as ch:
@@ -288,14 +294,17 @@ class BarAzmoonAsyncGrpc:
             arrival = rng.exponential(beta, req_count)
         print(f'Sending {req_count} requests sent in {time.ctime()} at timestep {after}')
         for i in range(req_count):
+            if self.request_index == len(self.payloads):
+                self.request_index = 0
             tasks.append(asyncio.ensure_future(
                 request_after_grpc(
                     self.stub,
                     self.metadata,
                     wait=arrival[i],
-                    payload=self.payload
+                    payload=self.payloads[self.request_index]
                 )
             ))
+            self.request_index += 1
         resps = await asyncio.gather(*tasks)
 
         elapsed = time.time() - start
