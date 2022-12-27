@@ -244,7 +244,10 @@ class MLServerAsyncGrpc:
                             shape=data_ins.data_shape,
                             datatype="FP32",
                             data=self.data,
-                            parameters=types.Parameters(content_type="np"),
+                            parameters=types.Parameters(
+                                content_type="np",
+                                custom_parameters=data_ins.parameters
+                                ),
                             )
                         ]
                     )
@@ -256,7 +259,9 @@ class MLServerAsyncGrpc:
                             shape=[1],
                             datatype="BYTES",
                             data=[data_ins.data.encode('utf8')],
-                            parameters=types.Parameters(content_type="str"),
+                            parameters=types.Parameters(
+                                content_type="str",
+                                **data_ins.custom_parameters),
                             )
                         ]
                     )
@@ -268,7 +273,9 @@ class MLServerAsyncGrpc:
                         shape=data_ins.data_shape,
                         datatype="INT32",
                         data=data_ins.data,
-                        parameters=types.Parameters(content_type="np"),
+                        parameters=types.Parameters(
+                            content_type="np",
+                            **data_ins.custom_parameters),
                         )
                     ]
                 )
@@ -281,7 +288,9 @@ class MLServerAsyncGrpc:
                             datatype="BYTES",
                             data=[data_ins.data.tobytes()],
                             parameters=types.Parameters(
-                                dtype='u1', datashape=str(data_ins.data_shape)),
+                                dtype='u1',
+                                datashape=str(data_ins.data_shape),
+                                **data_ins.custom_parameters),
                         )
                     ]
                 )
@@ -294,7 +303,8 @@ class MLServerAsyncGrpc:
                             datatype="BYTES",
                             data=[data_ins.data.tobytes()],
                             parameters=types.Parameters(
-                                dtype='f4', datashape=str(data_ins.data_shape)),
+                                dtype='f4', datashape=str(data_ins.data_shape),
+                                **data_ins.custom_parameters),
                         )
                     ]
                 )

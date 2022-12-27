@@ -14,10 +14,10 @@ import mlserver.grpc.dataplane_pb2_grpc as dataplane
 import mlserver.grpc.converters as converters
 
 class Data:
-    def __init__(self, data, data_shape, parameters) -> None:
+    def __init__(self, data, data_shape, custom_parameters) -> None:
         self.data=data
         self.data_shape=data_shape
-        self.parameters=parameters
+        self.custom_parameters=custom_parameters
 
 # from multiprocessing import Queue
 
@@ -233,20 +233,35 @@ async def request_after_grpc(stub, metadata, wait, payload):
             converters.ModelInferResponseConverter.to_types(grpc_resp)
         raw_json = StringRequestCodec.decode_response(inference_response)
         outputs = {'data': raw_json}
-        timing = {
-            'timing':{
-                'sending_time': sending_time,
-                'arrival_time': arrival_time
-            }
+        times = {}
+        times['request'] = {
+            'sending': sending_time,
+            'arrival': arrival_time
         }
+        times['models'] = eval(
+            inference_response.parameters.times)
+        resp['times'] = times
         resp['model_name'] = grpc_resp.model_name
         resp['outputs'] = [outputs]
-        resp.update(timing) 
         return resp
     except asyncio.exceptions.TimeoutError:
-        return {'failed': 'timeout'}
+        resp = {'failed': 'timeout'}
+        times = {}
+        times['request'] = {
+            'sending': sending_time,
+            'arrival': arrival_time
+        }
+        resp['times'] = times
+        return resp
     except grpc.RpcError as e:
-        return {'failed': str(e)}
+        resp = {'failed': str(e)}
+        times = {}
+        times['request'] = {
+            'sending': sending_time,
+            'arrival': arrival_time
+        }
+        resp['times'] = times
+        return resp
 
 class BarAzmoonAsyncGrpc:
     def __init__(
