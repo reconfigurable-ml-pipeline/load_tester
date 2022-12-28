@@ -1,22 +1,19 @@
 from typing import List, Tuple, Any
-import base64
 import numpy as np
-
 import mlserver.grpc.converters as converters
 import aiohttp.payload as aiohttp_payload
 import mlserver.types as types
+import base64
 
 from .main import BarAzmoonProcess
 from .main import BarAzmoonAsyncRest
 from .main import BarAzmoonAsyncGrpc
-from .main import Data
 
 def encode_to_bin(im_arr):
     im_bytes = im_arr.tobytes()
     im_base64 = base64.b64encode(im_bytes)
     input_dict = im_base64.decode()
     return input_dict
-
 
 class MLServerProcess(BarAzmoonProcess):
     def __init__(
@@ -154,8 +151,7 @@ class MLServerAsyncRest:
                     "name": "parameters-np",
                     "datatype": "BYTES",
                     "shape": self.data_shape,
-                    "data": encode_to_bin(np.array(
-                        self.data, dtype=np.float32)),
+                    "data": encode_to_bin(np.array(self.data, dtype=np.float32)),
                     "parameters": {
                         "content_type": "np",
                         "dtype": "f4"
@@ -210,9 +206,10 @@ class MLServerAsyncRest:
         return None, aiohttp_payload.JsonPayload(payload)
 
 class MLServerAsyncGrpc:
+    # TODO
     def __init__(
         self, *, workload: List[int], endpoint: str,
-        data: List[Data], model: str,
+        data: Any, data_shape: List[int], model: str,
         data_type: str, metadata: List[Tuple[str, str]],
         mode, # options - step, equal, exponential
         **kwargs,):
@@ -223,95 +220,83 @@ class MLServerAsyncGrpc:
         self._counter = 0
         self.data_type = data_type
         self.data = data
+        self.data_shape = data_shape
         self.kwargs = kwargs
         self.mode = mode
-        self.payloads = self.get_request_data()
+        _, self.payload = self.get_request_data()
 
     async def start(self):
         c = BarAzmoonAsyncGrpc(
-            self.endpoint, self.metadata, self.payloads, self.mode)
+            self.endpoint, self.metadata, self.payload, self.mode)
         await c.benchmark(self._workload)
         return c.responses
 
     def get_request_data(self) -> Tuple[str, str]:
-        payloads = []
-        for data_ins in self.data:
-            if self.data_type == 'audio':
-                payload = types.InferenceRequest(
-                    inputs=[
-                        types.RequestInput(
-                            name="echo_request",
-                            shape=data_ins.data_shape,
-                            datatype="FP32",
-                            data=self.data,
-                            parameters=types.Parameters(
-                                content_type="np",
-                                custom_parameters=data_ins.parameters
-                                ),
-                            )
-                        ]
+        if self.data_type == 'audio':
+            payload = types.InferenceRequest(
+                inputs=[
+                    types.RequestInput(
+                        name="echo_request",
+                        shape=self.data_shape,
+                        datatype="FP32",
+                        data=self.data,
+                        parameters=types.Parameters(content_type="np"),
+                        )
+                    ]
+                )
+        elif self.data_type == 'text':
+            payload = types.InferenceRequest(
+                inputs=[
+                    types.RequestInput(
+                        name="text_inputs",
+                        shape=[1],
+                        datatype="BYTES",
+                        data=[self.data.encode('utf8')],
+                        parameters=types.Parameters(content_type="str"),
+                        )
+                    ]
+                )
+        elif self.data_type == 'image':
+            payload =  types.InferenceRequest(
+                inputs=[
+                    types.RequestInput(
+                    name="parameters-np",
+                    shape=self.data_shape,
+                    datatype="INT32",
+                    data=self.data,
+                    parameters=types.Parameters(content_type="np"),
                     )
-            elif self.data_type == 'text':
-                payload = types.InferenceRequest(
-                    inputs=[
-                        types.RequestInput(
-                            name="text_inputs",
-                            shape=[1],
-                            datatype="BYTES",
-                            data=[data_ins.data.encode('utf8')],
-                            parameters=types.Parameters(
-                                content_type="str",
-                                **data_ins.custom_parameters),
-                            )
-                        ]
-                    )
-            elif self.data_type == 'image':
-                payload =  types.InferenceRequest(
-                    inputs=[
-                        types.RequestInput(
-                        name="parameters-np",
-                        shape=data_ins.data_shape,
-                        datatype="INT32",
-                        data=data_ins.data,
-                        parameters=types.Parameters(
-                            content_type="np",
-                            **data_ins.custom_parameters),
-                        )
-                    ]
-                )
-            elif self.data_type == 'image-bytes':
-                payload = types.InferenceRequest(
-                    inputs=[
-                        types.RequestInput(
-                            name="parameters-np",
-                            shape=[1],
-                            datatype="BYTES",
-                            data=[data_ins.data.tobytes()],
-                            parameters=types.Parameters(
-                                dtype='u1',
-                                datashape=str(data_ins.data_shape),
-                                **data_ins.custom_parameters),
-                        )
-                    ]
-                )
-            elif self.data_type == 'audio-bytes':
-                payload = types.InferenceRequest(
-                    inputs=[
-                        types.RequestInput(
-                            name="parameters-np",
-                            shape=[1],
-                            datatype="BYTES",
-                            data=[data_ins.data.tobytes()],
-                            parameters=types.Parameters(
-                                dtype='f4', datashape=str(data_ins.data_shape),
-                                **data_ins.custom_parameters),
-                        )
-                    ]
-                )
-            else:
-                raise ValueError(f"Unkown datatype {self.kwargs['data_type']}")
-            payload = converters.ModelInferRequestConverter.from_types(
-                payload, model_name=self.model, model_version=None
+                ]
             )
-            payloads.append(payload)
-        return payloads
+        elif self.data_type == 'image-bytes':
+            payload = types.InferenceRequest(
+                inputs=[
+                    types.RequestInput(
+                        name="parameters-np",
+                        shape=[1],
+                        datatype="BYTES",
+                        data=[self.data.tobytes()],
+                        parameters=types.Parameters(
+                            dtype='u1', datashape=str(self.data_shape)),
+                    )
+                ]
+            )
+        elif self.data_type == 'audio-bytes':
+            payload = types.InferenceRequest(
+                inputs=[
+                    types.RequestInput(
+                        name="parameters-np",
+                        shape=[1],
+                        datatype="BYTES",
+                        data=[self.data.tobytes()],
+                        parameters=types.Parameters(
+                            dtype='f4', datashape=str(self.data_shape)),
+                    )
+                ]
+            )
+        else:
+            raise ValueError(f"Unkown datatype {self.kwargs['data_type']}")
+        payload = converters.ModelInferRequestConverter.from_types(
+            payload, model_name=self.model, model_version=None
+        )
+        return None, payload
