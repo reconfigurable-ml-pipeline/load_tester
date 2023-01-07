@@ -240,7 +240,7 @@ class MLServerAsyncGrpc:
                 payload = types.InferenceRequest(
                     inputs=[
                         types.RequestInput(
-                            name="echo_request",
+                            name="audio",
                             shape=data_ins.data_shape,
                             datatype="FP32",
                             data=self.data,
@@ -255,7 +255,7 @@ class MLServerAsyncGrpc:
                 payload = types.InferenceRequest(
                     inputs=[
                         types.RequestInput(
-                            name="text_inputs",
+                            name="inputs",
                             shape=[1],
                             datatype="BYTES",
                             data=[data_ins.data.encode('utf8')],
@@ -269,7 +269,7 @@ class MLServerAsyncGrpc:
                 payload =  types.InferenceRequest(
                     inputs=[
                         types.RequestInput(
-                        name="parameters-np",
+                        name="image",
                         shape=data_ins.data_shape,
                         datatype="INT32",
                         data=data_ins.data,
@@ -283,7 +283,7 @@ class MLServerAsyncGrpc:
                 payload = types.InferenceRequest(
                     inputs=[
                         types.RequestInput(
-                            name="parameters-np",
+                            name="image-bytes",
                             shape=[1],
                             datatype="BYTES",
                             data=[data_ins.data.tobytes()],
@@ -298,12 +298,13 @@ class MLServerAsyncGrpc:
                 payload = types.InferenceRequest(
                     inputs=[
                         types.RequestInput(
-                            name="parameters-np",
+                            name="audio-bytes",
                             shape=[1],
                             datatype="BYTES",
                             data=[data_ins.data.tobytes()],
                             parameters=types.Parameters(
-                                dtype='f4', datashape=str(data_ins.data_shape),
+                                dtype='f4',
+                                datashape=str(data_ins.data_shape),
                                 **data_ins.custom_parameters),
                         )
                     ]

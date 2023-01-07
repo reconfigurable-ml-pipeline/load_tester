@@ -10,8 +10,20 @@ import aiohttp
 import asyncio
 import grpc
 from mlserver.codecs.string import StringRequestCodec
+from mlserver.codecs.numpy import NumpyRequestCodec
 import mlserver.grpc.dataplane_pb2_grpc as dataplane
 import mlserver.grpc.converters as converters
+
+
+def decode_from_bin(
+    outputs: List[bytes], shapes: List[
+        List[int]], dtypes: List[str]) -> List[np.array]:
+    batch = []
+    for input, shape, dtype in zip(outputs, shapes, dtypes):
+        buff = memoryview(input)
+        array = np.frombuffer(buff, dtype=dtype).reshape(shape)
+        batch.append(array)
+    return batch
 
 class Data:
     def __init__(self, data, data_shape, custom_parameters) -> None:
@@ -218,28 +230,50 @@ class BarAzmoonAsyncRest:
 # ============= Pure Async Grpc based load tester =============
 
 async def request_after_grpc(stub, metadata, wait, payload):
-    # TODO
     if wait:
         await asyncio.sleep(wait)
     sending_time = time.time()
     try:
-        # making the strucure similar to the rest output
-        resp = {}
+        # extract the infromation based on datatype
         grpc_resp = await stub.ModelInfer(
             request=payload,
             metadata=metadata)
         arrival_time = time.time()
         inference_response = \
             converters.ModelInferResponseConverter.to_types(grpc_resp)
-        raw_json = StringRequestCodec.decode_response(inference_response)
-        outputs = {'data': raw_json}
+        type_of = inference_response.parameters.type_of
+        # type_of = 'image'
+        if type_of == 'image':
+            for request_output in inference_response.outputs:
+                dtypes = request_output.parameters.dtype
+                shapes = request_output.parameters.datashape
+                output_data = request_output.data.__root__
+                shapes = eval(shapes)
+                dtypes = eval(dtypes)
+                X = decode_from_bin(
+                    outputs=output_data, shapes=shapes, dtypes=dtypes)
+                outputs = {'data': X}
+        elif type_of == 'text':
+            raw_json = StringRequestCodec.decode_response(inference_response)
+            outputs = {'data': raw_json}
+        elif type_of == 'int':
+            numpy_output = NumpyRequestCodec.decode_response(inference_response)
+            outputs = {'data': numpy_output}
+
+        # extract timestamps
         times = {}
         times['request'] = {
             'sending': sending_time,
             'arrival': arrival_time
         }
-        times['models'] = eval(
-            inference_response.parameters.times)
+        try:
+            times['models'] = eval(eval(
+                inference_response.outputs[0].parameters.times)[0])
+        except SyntaxError:
+            a = 1
+
+        # make the parsed response
+        resp = {}
         resp['times'] = times
         resp['model_name'] = grpc_resp.model_name
         resp['outputs'] = [outputs]
