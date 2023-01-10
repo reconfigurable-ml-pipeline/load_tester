@@ -279,7 +279,7 @@ class MLServerAsyncGrpc:
             #             )
             #         ]
             #     )
-            elif self.data_type == 'image-bytes':
+            elif self.data_type == 'image':
                 payload = types.InferenceRequest(
                     inputs=[
                         types.RequestInput(
@@ -294,7 +294,7 @@ class MLServerAsyncGrpc:
                         )
                     ]
                 )
-            elif self.data_type == 'audio-bytes':
+            elif self.data_type == 'audio':
                 payload = types.InferenceRequest(
                     inputs=[
                         types.RequestInput(
