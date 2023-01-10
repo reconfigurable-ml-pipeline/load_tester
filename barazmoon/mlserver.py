@@ -100,6 +100,7 @@ class MLServerAsyncRest:
         self, *, workload: List[int], endpoint: str,
         data: Any, data_shape: List[int],
         mode: str = 'step', # options - step, equal, exponential
+        benchmark_duration: int = 1,
         data_type: str, http_method = "post",
         **kwargs,):
         self.endpoint = endpoint
@@ -111,10 +112,13 @@ class MLServerAsyncRest:
         self.data_shape = data_shape
         self.mode = mode
         self.kwargs = kwargs
+        self.benchmark_duration = benchmark_duration
         _, self.payload = self.get_request_data()
 
     async def start(self):
-        c = BarAzmoonAsyncRest(self.endpoint, self.payload, self.mode)
+        c = BarAzmoonAsyncRest(
+            self.endpoint,self.payload,
+            self.mode, self.benchmark_duration)
         await c.benchmark(self._workload)
         await c.close()
         return c.responses
@@ -215,6 +219,7 @@ class MLServerAsyncGrpc:
         data: List[Data], model: str,
         data_type: str, metadata: List[Tuple[str, str]],
         mode, # options - step, equal, exponential
+        benchmark_duration: int = 1,
         **kwargs,):
         self.endpoint = endpoint
         self.metadata = metadata
@@ -225,11 +230,13 @@ class MLServerAsyncGrpc:
         self.data = data
         self.kwargs = kwargs
         self.mode = mode
+        self.benchmark_duration = benchmark_duration
         self.payloads = self.get_request_data()
 
     async def start(self):
         c = BarAzmoonAsyncGrpc(
-            self.endpoint, self.metadata, self.payloads, self.mode)
+            self.endpoint, self.metadata, self.payloads,
+            self.mode, self.benchmark_duration)
         await c.benchmark(self._workload)
         return c.responses
 
