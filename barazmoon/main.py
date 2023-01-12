@@ -26,7 +26,7 @@ def decode_from_bin(
     return batch
 
 class Data:
-    def __init__(self, data, data_shape, custom_parameters) -> None:
+    def __init__(self, data, data_shape, custom_parameters={'custom': 'custom'}) -> None:
         self.data=data
         self.data_shape=data_shape
         self.custom_parameters=custom_parameters
