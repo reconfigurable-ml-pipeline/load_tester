@@ -266,11 +266,8 @@ async def request_after_grpc(stub, metadata, wait, payload):
             'sending': sending_time,
             'arrival': arrival_time
         }
-        try:
-            times['models'] = eval(eval(
-                inference_response.outputs[0].parameters.times)[0])
-        except SyntaxError:
-            a = 1
+        times['models'] = eval(eval(
+            inference_response.outputs[0].parameters.times)[0])
 
         # make the parsed response
         resp = {}
