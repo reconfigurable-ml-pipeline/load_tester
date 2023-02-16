@@ -8,6 +8,7 @@ from aiohttp import ClientSession, TCPConnector
 
 class BarAzmoon:
     def __init__(self, *, workload: List[int], endpoint: str, http_method = "get", **kwargs):
+        np.random.seed(42)
         self.endpoint = endpoint
         self.http_method = http_method
         self.__workload = (rate for rate in workload)
