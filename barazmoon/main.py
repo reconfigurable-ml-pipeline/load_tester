@@ -55,8 +55,8 @@ class BarAzmoon:
         try:
             async with getattr(session, self.http_method)(self.endpoint, data=data) as response:
                 response = await response.json(content_type=None)
-                self.process_response(data_id, response)
-                return 1
+                is_success = self.process_response(data_id, response)
+                return 1 if is_success else 0
         except Exception as exc:
             print(exc)
             return 0
@@ -65,4 +65,4 @@ class BarAzmoon:
         return None, None
     
     def process_response(self, data_id: str, response: dict):
-        pass
+        return True
