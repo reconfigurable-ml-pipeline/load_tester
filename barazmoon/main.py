@@ -268,7 +268,8 @@ async def request_after_grpc(stub, metadata, wait, payload):
         }
         times['models'] = eval(eval(
             inference_response.outputs[0].parameters.times)[0])
-
+        # times['models'] = eval(
+        #     inference_response.outputs[0].parameters.times)
         # make the parsed response
         resp = {}
         resp['times'] = times
@@ -287,10 +288,14 @@ async def request_after_grpc(stub, metadata, wait, payload):
     except grpc.RpcError as e:
         resp = {'failed': str(e)}
         times = {}
-        times['request'] = {
-            'sending': sending_time,
-            'arrival': arrival_time
-        }
+        try:
+            times['request'] = {
+                'sending': sending_time,
+                'arrival': arrival_time
+            }
+        except UnboundLocalError:
+            times['request'] = {
+                'sending': sending_time}
         resp['times'] = times
         return resp
 
