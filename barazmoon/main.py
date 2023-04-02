@@ -3,8 +3,7 @@ from typing import List, Tuple
 import numpy as np
 from multiprocessing import Process, active_children #, Lock
 import asyncio
-from aiohttp import ClientSession, ClientTimeout
-from aiohttp import TCPConnector
+from aiohttp import ClientSession
 from numpy.random import default_rng
 import aiohttp
 import asyncio
@@ -363,4 +362,10 @@ class BarAzmoonAsyncGrpc:
             await asyncio.sleep(duration-elapsed)
 
         self.responses.append(resps)
-        print(f'Recieving {len(resps)} requests sent in {time.ctime()} at timestep {after}')
+        total = len(resps)
+        failed = 0
+        for resp in resps:
+            if 'failed' in resp.keys():
+                failed += 1
+        success = total - failed
+        print(f'Recieving {total} requests sent in {time.ctime()} at timestep {after}, success rate: {success}/{total}')
