@@ -308,7 +308,7 @@ class MLServerAsyncGrpc:
                             name="audio-bytes",
                             shape=[1],
                             datatype="BYTES",
-                            data=[data_ins.data.tobytes()],
+                            data=[data_ins.data.astype(np.float32).tobytes()],
                             parameters=types.Parameters(
                                 dtype='f4',
                                 datashape=str(data_ins.data_shape),
