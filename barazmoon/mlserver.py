@@ -11,6 +11,7 @@ from .main import BarAzmoonAsyncRest
 from .main import BarAzmoonAsyncGrpc
 from .main import Data
 
+
 def encode_to_bin(im_arr):
     im_bytes = im_arr.tobytes()
     im_base64 = base64.b64encode(im_bytes)
@@ -20,74 +21,68 @@ def encode_to_bin(im_arr):
 
 class MLServerProcess(BarAzmoonProcess):
     def __init__(
-        self, *, workload: List[int],
-        endpoint: str, http_method="get", **kwargs):
+        self, *, workload: List[int], endpoint: str, http_method="get", **kwargs
+    ):
         super().__init__(
-            workload=workload, endpoint=endpoint,
-            http_method=http_method, **kwargs)
-        self.data_type = self.kwargs['data_type']
+            workload=workload, endpoint=endpoint, http_method=http_method, **kwargs
+        )
+        self.data_type = self.kwargs["data_type"]
 
     def get_request_data(self) -> Tuple[str, str]:
-        if self.data_type == 'example':
+        if self.data_type == "example":
             payload = {
                 "inputs": [
                     {
                         "name": "parameters-np",
                         "datatype": "FP32",
-                        "shape": self.kwargs['data_shape'],
-                        "data": self.kwargs['data'],
-                        "parameters": {
-                            "content_type": "np"
-                        }
-                    }]
-                }
-        elif self.data_type == 'audio':
-            payload = {
-                "inputs": [
-                    {
-                    "name": "array_inputs",
-                    "shape": self.kwargs['data_shape'],
-                    "datatype": "FP32",
-                    "data": self.kwargs['data'],
-                    "parameters": {
-                        "content_type": "np"
-                    }
+                        "shape": self.kwargs["data_shape"],
+                        "data": self.kwargs["data"],
+                        "parameters": {"content_type": "np"},
                     }
                 ]
             }
-        elif self.data_type == 'text':
+        elif self.data_type == "audio":
+            payload = {
+                "inputs": [
+                    {
+                        "name": "array_inputs",
+                        "shape": self.kwargs["data_shape"],
+                        "datatype": "FP32",
+                        "data": self.kwargs["data"],
+                        "parameters": {"content_type": "np"},
+                    }
+                ]
+            }
+        elif self.data_type == "text":
             payload = {
                 "inputs": [
                     {
                         "name": "text_inputs",
-                        "shape": self.kwargs['data_shape'],
+                        "shape": self.kwargs["data_shape"],
                         "datatype": "BYTES",
-                        "data": self.kwargs['data'],
-                        "parameters": {
-                            "content_type": "str"
-                        }
+                        "data": self.kwargs["data"],
+                        "parameters": {"content_type": "str"},
                     }
                 ]
             }
-        elif self.data_type == 'image':
+        elif self.data_type == "image":
             payload = {
-                "inputs":[
+                "inputs": [
                     {
                         "name": "parameters-np",
                         "datatype": "INT32",
-                        "shape": self.kwargs['data_shape'],
-                        "data": self.kwargs['data'],
-                        "parameters": {
-                            "content_type": "np"
-                            }
-                    }]
-                }
+                        "shape": self.kwargs["data_shape"],
+                        "data": self.kwargs["data"],
+                        "parameters": {"content_type": "np"},
+                    }
+                ]
+            }
         else:
             raise ValueError(f"Unkown datatype {self.kwargs['data_type']}")
         return None, aiohttp_payload.JsonPayload(payload)
 
     def process_response(self, data_id: str, response: dict):
-        if self.data_type == 'image':
+        if self.data_type == "image":
             print(f"{data_id}=")
             # print(f"{response.keys()=}")
         else:
@@ -97,12 +92,18 @@ class MLServerProcess(BarAzmoonProcess):
 
 class MLServerAsyncRest:
     def __init__(
-        self, *, workload: List[int], endpoint: str,
-        data: Any, data_shape: List[int],
-        mode: str = 'step', # options - step, equal, exponential
+        self,
+        *,
+        workload: List[int],
+        endpoint: str,
+        data: Any,
+        data_shape: List[int],
+        mode: str = "step",  # options - step, equal, exponential
         benchmark_duration: int = 1,
-        data_type: str, http_method = "post",
-        **kwargs,):
+        data_type: str,
+        http_method="post",
+        **kwargs,
+    ):
         self.endpoint = endpoint
         self.http_method = http_method
         self._workload = (rate for rate in workload)
@@ -117,14 +118,14 @@ class MLServerAsyncRest:
 
     async def start(self):
         c = BarAzmoonAsyncRest(
-            self.endpoint,self.payload,
-            self.mode, self.benchmark_duration)
+            self.endpoint, self.payload, self.mode, self.benchmark_duration
+        )
         await c.benchmark(self._workload)
         await c.close()
         return c.responses
 
     def get_request_data(self) -> Tuple[str, str]:
-        if self.data_type == 'example':
+        if self.data_type == "example":
             payload = {
                 "inputs": [
                     {
@@ -132,42 +133,35 @@ class MLServerAsyncRest:
                         "datatype": "FP32",
                         "shape": self.data_shape,
                         "data": self.data,
-                        "parameters": {
-                            "content_type": "np"
-                        }
-                    }]
-                }
-        elif self.data_type == 'audio':
-            payload = {
-                "inputs": [
-                    {
-                    "name": "array_inputs",
-                    "shape": self.data_shape,
-                    "datatype": "FP32",
-                    "data": self.data,
-                    "parameters": {
-                        "content_type": "np"
-                    }
+                        "parameters": {"content_type": "np"},
                     }
                 ]
             }
-        elif self.data_type == 'audio-base64':
+        elif self.data_type == "audio":
             payload = {
                 "inputs": [
                     {
-                    "name": "parameters-np",
-                    "datatype": "BYTES",
-                    "shape": self.data_shape,
-                    "data": encode_to_bin(np.array(
-                        self.data, dtype=np.float32)),
-                    "parameters": {
-                        "content_type": "np",
-                        "dtype": "f4"
-                        }
+                        "name": "array_inputs",
+                        "shape": self.data_shape,
+                        "datatype": "FP32",
+                        "data": self.data,
+                        "parameters": {"content_type": "np"},
                     }
                 ]
             }
-        elif self.data_type == 'text':
+        elif self.data_type == "audio-base64":
+            payload = {
+                "inputs": [
+                    {
+                        "name": "parameters-np",
+                        "datatype": "BYTES",
+                        "shape": self.data_shape,
+                        "data": encode_to_bin(np.array(self.data, dtype=np.float32)),
+                        "parameters": {"content_type": "np", "dtype": "f4"},
+                    }
+                ]
+            }
+        elif self.data_type == "text":
             payload = {
                 "inputs": [
                     {
@@ -175,37 +169,31 @@ class MLServerAsyncRest:
                         "shape": self.data_shape,
                         "datatype": "BYTES",
                         "data": [self.data],
-                        "parameters": {
-                            "content_type": "str"
-                        }
+                        "parameters": {"content_type": "str"},
                     }
                 ]
             }
-        elif self.data_type == 'image':
+        elif self.data_type == "image":
             payload = {
-                "inputs":[
+                "inputs": [
                     {
                         "name": "parameters-np",
                         "datatype": "INT32",
                         "shape": self.data_shape,
                         "data": self.data,
-                        "parameters": {
-                            "content_type": "np"
-                            }
-                    }]
-                }
-        elif self.data_type == 'image-base64':
+                        "parameters": {"content_type": "np"},
+                    }
+                ]
+            }
+        elif self.data_type == "image-base64":
             payload = {
                 "inputs": [
                     {
-                    "name": "parameters-np",
-                    "datatype": "BYTES",
-                    "shape": self.data_shape,
-                    "data": encode_to_bin(np.array(self.data)),
-                    "parameters": {
-                        "content_type": "np",
-                        "dtype": "u1"
-                        }
+                        "name": "parameters-np",
+                        "datatype": "BYTES",
+                        "shape": self.data_shape,
+                        "data": encode_to_bin(np.array(self.data)),
+                        "parameters": {"content_type": "np", "dtype": "u1"},
                     }
                 ]
             }
@@ -213,14 +201,21 @@ class MLServerAsyncRest:
             raise ValueError(f"Unkown datatype {self.kwargs['data_type']}")
         return None, aiohttp_payload.JsonPayload(payload)
 
+
 class MLServerAsyncGrpc:
     def __init__(
-        self, *, workload: List[int], endpoint: str,
-        data: List[Data], model: str,
-        data_type: str, metadata: List[Tuple[str, str]],
-        mode, # options - step, equal, exponential
+        self,
+        *,
+        workload: List[int],
+        endpoint: str,
+        data: List[Data],
+        model: str,
+        data_type: str,
+        metadata: List[Tuple[str, str]],
+        mode,  # options - step, equal, exponential
         benchmark_duration: int = 1,
-        **kwargs,):
+        **kwargs,
+    ):
         self.endpoint = endpoint
         self.metadata = metadata
         self.model = model
@@ -235,8 +230,12 @@ class MLServerAsyncGrpc:
 
     async def start(self):
         c = BarAzmoonAsyncGrpc(
-            self.endpoint, self.metadata, self.payloads,
-            self.mode, self.benchmark_duration)
+            self.endpoint,
+            self.metadata,
+            self.payloads,
+            self.mode,
+            self.benchmark_duration,
+        )
         await c.benchmark(self._workload)
         return c.responses
 
@@ -258,20 +257,20 @@ class MLServerAsyncGrpc:
             #                 )
             #             ]
             #         )
-            if self.data_type == 'text':
+            if self.data_type == "text":
                 payload = types.InferenceRequest(
                     inputs=[
                         types.RequestInput(
                             name="inputs",
                             shape=[1],
                             datatype="BYTES",
-                            data=[data_ins.data.encode('utf8')],
+                            data=[data_ins.data.encode("utf8")],
                             parameters=types.Parameters(
-                                content_type="str",
-                                **data_ins.custom_parameters),
-                            )
-                        ]
-                    )
+                                content_type="str", **data_ins.custom_parameters
+                            ),
+                        )
+                    ]
+                )
             # elif self.data_type == 'image':
             #     payload =  types.InferenceRequest(
             #         inputs=[
@@ -286,7 +285,7 @@ class MLServerAsyncGrpc:
             #             )
             #         ]
             #     )
-            elif self.data_type == 'image':
+            elif self.data_type == "image":
                 payload = types.InferenceRequest(
                     inputs=[
                         types.RequestInput(
@@ -295,13 +294,14 @@ class MLServerAsyncGrpc:
                             datatype="BYTES",
                             data=[data_ins.data.tobytes()],
                             parameters=types.Parameters(
-                                dtype='u1',
+                                dtype="u1",
                                 datashape=str(data_ins.data_shape),
-                                **data_ins.custom_parameters),
+                                **data_ins.custom_parameters,
+                            ),
                         )
                     ]
                 )
-            elif self.data_type == 'audio':
+            elif self.data_type == "audio":
                 payload = types.InferenceRequest(
                     inputs=[
                         types.RequestInput(
@@ -310,9 +310,10 @@ class MLServerAsyncGrpc:
                             datatype="BYTES",
                             data=[data_ins.data.astype(np.float32).tobytes()],
                             parameters=types.Parameters(
-                                dtype='f4',
+                                dtype="f4",
                                 datashape=str(data_ins.data_shape),
-                                **data_ins.custom_parameters),
+                                **data_ins.custom_parameters,
+                            ),
                         )
                     ]
                 )

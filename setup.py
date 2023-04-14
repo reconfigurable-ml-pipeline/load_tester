@@ -15,5 +15,5 @@ setup(
     install_requires=[
         "numpy>=1.19.2",
         "aiohttp>=3.7.4",
-    ]
+    ],
 )

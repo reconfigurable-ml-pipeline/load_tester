@@ -1,66 +1,54 @@
 import os
+import datetime
+
 TESTS_PATH = os.path.dirname(__file__)
-seconds_per_day = 30 * 60 + 23 * 3600
-# twitter dataset extracted from 
+SECONDS_PER_DAY = 30 * 60 + 23 * 3600
+
+# twitter dataset extracted from
 path = os.path.join(TESTS_PATH, "workload.txt")
+
+
 def get_workload():
-    f = open(path, "r")
-    data = f.read()
-    workload =  data.split(" ")
-    return_workload = []
-    for i, w in enumerate(workload):
-        try:
-            return_workload.append(int(w))
-        except:
-            pass
-    f.close()
-    return return_workload
+    with open(path, "r") as f:
+        data = f.read()
+        workload = data.split(" ")
+        return_workload = []
+        for i, w in enumerate(workload):
+            try:
+                return_workload.append(int(w))
+            except:
+                pass
+        return return_workload
+
+
+def parse_date_str(date_str):
+    parts = list(map(int, date_str.split(":")))
+    if len(parts) == 3:
+        # day:hour:minute format
+        day, hour, minute = parts
+        return datetime.datetime(2023, 1, day, hour, minute)
+    else:
+        # day:hour:minute:second format
+        day, hour, minute, second = parts
+        return datetime.datetime(2023, 1, day, hour, minute, second)
+
+
 def twitter_workload_generator(days):
-    if "-" in days and ":" not in days:
+    workload_all = get_workload()
+    if "-" not in days:
+        # returns by days
         first, end = map(int, days.split("-"))
         first = (first - 1) * seconds_per_day
         end = end * seconds_per_day
-        workload_all = get_workload()
         return workload_all[first:end]
-    
-    elif ":" in days:
-        first, second = days.split("-")
-        first_day_detail = list(map(int, first.split(":")))
-        second_day_detail = list(map(int, second.split(":")))
-        first_day = first_day_detail[0]
-        second_day = second_day_detail[0]
-        first = (first_day - 1) * seconds_per_day
-        second = second_day * seconds_per_day
-        workload_all = get_workload()
-        workload_temp = workload_all[first:second]
 
-        if first_day_detail[1] > 0:
-            first_total_seconds = (first_day_detail[1] - 1) * 3600 + 30 * 60
-        else:
-            first_total_seconds = 0
-        
-        first_total_seconds += first_day_detail[2] * 60
-        if first_day_detail[1] > 0:
-            second_total_seconds = (second_day_detail[1] - 1) * 3600 + 30 * 60
-        else:
-            second_total_seconds = 30 * 60
-
-        second_total_seconds += second_day_detail[2] * 60  + (second_day - first_day) * seconds_per_day
-        return workload_temp[first_total_seconds:second_total_seconds]
-    
     else:
-        workload_all = get_workload()
-        first = int(days)
-        end = first
-        first = first - 1
-        first = first *seconds_per_day
-        end = end * seconds_per_day
-        return workload_all[first:end]
-
-# print(len(twitter_workload_generator("3:2:2-4:5:3")))
-# print(len(twitter_workload_generator("3-5")))
-# print(len(twitter_workload_generator("3")))
-
-# Use - to show split between days => 3-5
-# Use : to indicate you want give an specific time of day => 3:5:3-5:6:7. 3
-# without using any of  them, you actually say that you want detail of that specific day =
+        # return by full date
+        start_date_str, end_date_str = days.split("-")
+        start_date = parse_date_str(start_date_str)
+        end_date = parse_date_str(end_date_str)
+        start_index = (
+            start_date - datetime.datetime(2023, 1, 1, 0, 0, 0)
+        ).total_seconds()
+        end_index = (end_date - datetime.datetime(2023, 1, 1, 0, 0, 0)).total_seconds()
+        return workload_all[int(start_index) : int(end_index) + 1]
