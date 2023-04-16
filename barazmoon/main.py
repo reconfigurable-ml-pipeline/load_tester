@@ -325,6 +325,10 @@ class BarAzmoonAsyncGrpc:
         self.mode = mode
         self.duration = benchmark_duration
         self.request_index = 0
+        self.stop_flag = False
+
+    # def stop(self):
+    #     self.stop_flag = True
 
     async def benchmark(self, request_counts):
         async with grpc.aio.insecure_channel(self.endpoint) as ch:
@@ -360,6 +364,8 @@ class BarAzmoonAsyncGrpc:
         for i in range(req_count):
             if self.request_index == len(self.payloads):
                 self.request_index = 0
+            if self.stop_flag:
+                break
             tasks.append(
                 asyncio.ensure_future(
                     request_after_grpc(
@@ -371,6 +377,12 @@ class BarAzmoonAsyncGrpc:
                 )
             )
             self.request_index += 1
+        # if self.stop_flag:
+        #     # Cancel all remaining tasks if the stop flag is set
+        #     for task in tasks:
+        #         task.cancel()
+        #     return []
+
         resps = await asyncio.gather(*tasks)
 
         elapsed = time.time() - start
@@ -387,3 +399,4 @@ class BarAzmoonAsyncGrpc:
         print(
             f"Recieving {total} requests sent in {time.ctime()} at timestep {after}, success rate: {success}/{total}"
         )
+        return resps
