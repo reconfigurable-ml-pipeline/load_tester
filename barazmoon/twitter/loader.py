@@ -35,12 +35,12 @@ def parse_date_str(date_str):
 
 def twitter_workload_generator(days):
     workload_all = get_workload()
-    if "-" not in days:
+    if ":" not in days:
         # returns by days
-        first, end = map(int, days.split("-"))
-        first = (first - 1) * seconds_per_day
-        end = end * seconds_per_day
-        return workload_all[first:end]
+        first, end = list(map(int, days.split("-")))
+        # first = (first - 1) * seconds_per_day
+        # end = end * seconds_per_day
+        return workload_all[first: end]
 
     else:
         # return by full date
