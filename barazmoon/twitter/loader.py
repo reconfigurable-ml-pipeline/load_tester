@@ -41,7 +41,7 @@ def twitter_workload_generator(days, damping_factor=None):
         # first = (first - 1) * seconds_per_day
         # end = end * seconds_per_day
         if damping_factor is not None:
-            workload_all = list(map(lambda l: int(l)/damping_factor, workload_all))
+            workload_all = list(map(lambda l: int(l/damping_factor), workload_all))
         return workload_all[first: end]
 
     else:
@@ -54,5 +54,5 @@ def twitter_workload_generator(days, damping_factor=None):
         ).total_seconds()
         end_index = (end_date - datetime.datetime(2023, 1, 1, 0, 0, 0)).total_seconds()
         if damping_factor is not None:
-            workload_all = list(map(lambda l: int(l)/damping_factor, workload_all))
+            workload_all = list(map(lambda l: int(l/damping_factor), workload_all))
         return workload_all[int(start_index) : int(end_index) + 1]
