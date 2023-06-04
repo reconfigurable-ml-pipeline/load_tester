@@ -275,16 +275,15 @@ async def request_after_grpc(stub, metadata, wait, payload):
         # extract timestamps
         times = {}
         times["request"] = {"sending": sending_time, "arrival": arrival_time}
-        times["models"] = eval(eval(inference_response.outputs[0].parameters.times)[0])
-        # times['models'] = eval(
-        #     inference_response.outputs[0].parameters.times)
-        # times['models'] = eval(
-        #     inference_response.outputs[0].parameters.times)
-        # make the parsed response
         resp = {}
         resp["times"] = times
         resp["model_name"] = grpc_resp.model_name
-        resp["outputs"] = [outputs]
+        if hasattr(inference_response.outputs[0].parameters, 'times'): # handling drops
+            times["models"] = eval(eval(inference_response.outputs[0].parameters.times)[0])
+            resp["outputs"] = [outputs]
+        else:
+            drop_message = NumpyRequestCodec.decode_response(inference_response)[0]
+            resp = {"failed": drop_message}
         return resp
     except asyncio.exceptions.TimeoutError:
         resp = {"failed": "timeout"}
