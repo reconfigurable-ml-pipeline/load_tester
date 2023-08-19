@@ -213,6 +213,7 @@ class MLServerAsyncGrpc:
         data_type: str,
         metadata: List[Tuple[str, str]],
         mode,  # options - step, equal, exponential
+        client_batch: int = 1,
         benchmark_duration: int = 1,
         **kwargs,
     ):
@@ -226,6 +227,7 @@ class MLServerAsyncGrpc:
         self.kwargs = kwargs
         self.mode = mode
         self.benchmark_duration = benchmark_duration
+        self.client_batch = client_batch
         self.payloads = self.get_request_data()
 
     async def start(self):
@@ -296,7 +298,7 @@ class MLServerAsyncGrpc:
                             name="image-bytes",
                             shape=[1],
                             datatype="BYTES",
-                            data=[data_ins.data.tobytes()],
+                            data=[data_ins.data.tobytes()] * self.client_batch,
                             parameters=types.Parameters(
                                 dtype="u1",
                                 datashape=str(data_ins.data_shape),
