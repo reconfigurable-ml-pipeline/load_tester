@@ -34,8 +34,6 @@ class Data:
         self.custom_parameters = custom_parameters
 
 
-# from multiprocessing import Queue
-
 # MAX_QUEUE_SIZE = 1000000
 # queue = Queue(MAX_QUEUE_SIZE)
 # lock = Lock()
