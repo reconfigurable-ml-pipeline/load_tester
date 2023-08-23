@@ -231,7 +231,10 @@ class BarAzmoonAsyncGrpc:
     #     self.stop_flag = True
 
     async def benchmark(self, request_counts):
-        async with grpc.aio.insecure_channel(self.endpoint) as ch:
+        async with grpc.aio.insecure_channel(self.endpoint, options=[
+    ('grpc.max_send_message_length', 10 * 1024 * 1024),
+    ('grpc.max_receive_message_length', 10 * 1024 * 1024),
+]) as ch:
             self.stub = dataplane.GRPCInferenceServiceStub(ch)
             tasks = []
             for i, req_count in enumerate(request_counts):

@@ -1,4 +1,3 @@
-from barazmoon.main import BarAzmoonProcess
 from barazmoon.main import BarAzmoonAsyncRest
 from barazmoon.mlserver import MLServerProcess
 from barazmoon.mlserver import MLServerAsyncRest
