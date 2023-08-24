@@ -144,7 +144,7 @@ class BarAzmoonAsyncRest:
 # ============= Pure Async Grpc based load tester =============
 
 
-async def request_after_grpc(stub, metadata, wait, payload):
+async def request_after_grpc(stub, metadata, wait, payload, ignore_output=False):
     if wait:
         await asyncio.sleep(wait)
     sending_time = time.time()
@@ -154,22 +154,24 @@ async def request_after_grpc(stub, metadata, wait, payload):
         arrival_time = time.time()
         inference_response = converters.ModelInferResponseConverter.to_types(grpc_resp)
         type_of = inference_response.parameters.type_of
-        # type_of = 'image'
-        if type_of == "image":
-            for request_output in inference_response.outputs:
-                dtypes = request_output.parameters.dtype
-                shapes = request_output.parameters.datashape
-                output_data = request_output.data.__root__
-                shapes = eval(shapes)
-                dtypes = eval(dtypes)
-                X = decode_from_bin(outputs=output_data, shapes=shapes, dtypes=dtypes)
-                outputs = {"data": X}
-        elif type_of == "text":
-            raw_json = StringRequestCodec.decode_response(inference_response)
-            outputs = {"data": raw_json}
-        elif type_of == "int":
-            numpy_output = NumpyRequestCodec.decode_response(inference_response)
-            outputs = {"data": numpy_output}
+        if ignore_output:
+            outputs = {"data": "ignore output"}
+        else:
+            if type_of == "image":
+                for request_output in inference_response.outputs:
+                    dtypes = request_output.parameters.dtype
+                    shapes = request_output.parameters.datashape
+                    output_data = request_output.data.__root__
+                    shapes = eval(shapes)
+                    dtypes = eval(dtypes)
+                    X = decode_from_bin(outputs=output_data, shapes=shapes, dtypes=dtypes)
+                    outputs = {"data": X}
+            elif type_of == "text":
+                raw_json = StringRequestCodec.decode_response(inference_response)
+                outputs = {"data": raw_json}
+            elif type_of == "int":
+                numpy_output = NumpyRequestCodec.decode_response(inference_response)
+                outputs = {"data": numpy_output}
 
         # extract timestamps
         times = {}
@@ -209,6 +211,7 @@ class BarAzmoonAsyncGrpc:
         payloads: List[Data],
         mode: str,
         benchmark_duration=1,
+        ignore_output=False
     ):
         """
         endpoint:
@@ -224,6 +227,7 @@ class BarAzmoonAsyncGrpc:
         self.duration = benchmark_duration
         self.request_index = 0
         self.stop_flag = False
+        self.ignore_output = ignore_output
 
     # def stop(self):
     #     self.stop_flag = True
@@ -274,6 +278,7 @@ class BarAzmoonAsyncGrpc:
                         self.metadata,
                         wait=arrival[i],
                         payload=self.payloads[self.request_index],
+                        ignore_output=self.ignore_output
                     )
                 )
             )

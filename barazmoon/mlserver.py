@@ -6,7 +6,6 @@ import mlserver.grpc.converters as converters
 import aiohttp.payload as aiohttp_payload
 import mlserver.types as types
 
-from .main import BarAzmoonProcess
 from .main import BarAzmoonAsyncRest
 from .main import BarAzmoonAsyncGrpc
 from .main import Data
@@ -215,6 +214,7 @@ class MLServerAsyncGrpc:
         mode,  # options - step, equal, exponential
         client_batch: int = 1,
         benchmark_duration: int = 1,
+        ignore_output: bool = False,
         **kwargs,
     ):
         self.endpoint = endpoint
@@ -228,6 +228,7 @@ class MLServerAsyncGrpc:
         self.mode = mode
         self.benchmark_duration = benchmark_duration
         self.client_batch = client_batch
+        self.ignore_output = ignore_output
         self.payloads = self.get_request_data()
 
     async def start(self):
@@ -237,6 +238,7 @@ class MLServerAsyncGrpc:
             self.payloads,
             self.mode,
             self.benchmark_duration,
+            self.ignore_output
         )
         await c.benchmark(self._workload)
         return c.responses
