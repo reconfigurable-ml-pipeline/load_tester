@@ -181,6 +181,7 @@ async def request_after_grpc(stub, metadata, wait, payload, ignore_output=False)
         resp["model_name"] = grpc_resp.model_name
         if hasattr(inference_response.outputs[0].parameters, 'times'): # handling drops
             times["models"] = eval(eval(inference_response.outputs[0].parameters.times)[0])
+            # times["models"] = eval(inference_response.outputs[0].parameters.times)
             resp["outputs"] = [outputs]
         else:
             drop_message = NumpyRequestCodec.decode_response(inference_response)[0]
