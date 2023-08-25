@@ -144,7 +144,7 @@ class MLServerAsyncGrpc:
         client_batch: int = 1,
         benchmark_duration: int = 1,
         ignore_output: bool = False,
-        grpc_max_message_length: int = 104857600
+        grpc_max_message_length: int = 104857600,
         **kwargs,
     ):
         self.endpoint = endpoint
