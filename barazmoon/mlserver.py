@@ -144,6 +144,7 @@ class MLServerAsyncGrpc:
         client_batch: int = 1,
         benchmark_duration: int = 1,
         ignore_output: bool = False,
+        grpc_max_message_length: int = 104857600
         **kwargs,
     ):
         self.endpoint = endpoint
@@ -158,6 +159,7 @@ class MLServerAsyncGrpc:
         self.benchmark_duration = benchmark_duration
         self.client_batch = client_batch
         self.ignore_output = ignore_output
+        self.grpc_max_message_length = grpc_max_message_length
         self.payloads = self.get_request_data()
 
     async def start(self):
@@ -167,7 +169,8 @@ class MLServerAsyncGrpc:
             self.payloads,
             self.mode,
             self.benchmark_duration,
-            self.ignore_output
+            self.ignore_output,
+            self.grpc_max_message_length
         )
         await c.benchmark(self._workload)
         return c.responses

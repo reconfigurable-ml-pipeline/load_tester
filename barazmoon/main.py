@@ -212,7 +212,8 @@ class BarAzmoonAsyncGrpc:
         payloads: List[Data],
         mode: str,
         benchmark_duration=1,
-        ignore_output=False
+        ignore_output=False,
+        grpc_max_message_length: int = 104857600
     ):
         """
         endpoint:
@@ -229,15 +230,13 @@ class BarAzmoonAsyncGrpc:
         self.request_index = 0
         self.stop_flag = False
         self.ignore_output = ignore_output
-
-    # def stop(self):
-    #     self.stop_flag = True
+        self.grpc_max_message_length = grpc_max_message_length
 
     async def benchmark(self, request_counts):
-        async with grpc.aio.insecure_channel(self.endpoint, options=[
-    ('grpc.max_send_message_length', 10 * 1024 * 1024),
-    ('grpc.max_receive_message_length', 10 * 1024 * 1024),
-]) as ch:
+        options = [
+            ('grpc.max_send_message_length', self.grpc_max_message_length),
+            ('grpc.max_receive_message_length', self.grpc_max_message_length)]
+        async with grpc.aio.insecure_channel(self.endpoint, options=options) as ch:
             self.stub = dataplane.GRPCInferenceServiceStub(ch)
             tasks = []
             for i, req_count in enumerate(request_counts):
