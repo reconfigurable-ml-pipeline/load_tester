@@ -1,9 +1,7 @@
 import time
-from typing import List, Tuple
+from typing import List
 import numpy as np
-from multiprocessing import Process, active_children  # , Lock
 import asyncio
-from aiohttp import ClientSession
 from numpy.random import default_rng
 import aiohttp
 import asyncio
@@ -12,6 +10,7 @@ from mlserver.codecs.string import StringRequestCodec
 from mlserver.codecs.numpy import NumpyRequestCodec
 import mlserver.grpc.dataplane_pb2_grpc as dataplane
 import mlserver.grpc.converters as converters
+from copy import deepcopy
 
 
 def decode_from_bin(
@@ -159,11 +158,11 @@ async def request_after_grpc(stub, metadata, wait, payload, ignore_output=False)
         else:
             if type_of == "image":
                 for request_output in inference_response.outputs:
-                    dtypes = request_output.parameters.dtype
-                    shapes = request_output.parameters.datashape
+                    dtypes = request_output.parameters.extended_parameters['dtype']
+                    shapes = request_output.parameters.extended_parameters['datashape']
                     output_data = request_output.data.__root__
-                    shapes = eval(shapes)
-                    dtypes = eval(dtypes)
+                    # shapes = eval(shapes)
+                    # dtypes = eval(dtypes)
                     X = decode_from_bin(outputs=output_data, shapes=shapes, dtypes=dtypes)
                     outputs = {"data": X}
             elif type_of == "text":
@@ -179,11 +178,15 @@ async def request_after_grpc(stub, metadata, wait, payload, ignore_output=False)
         resp = {}
         resp["times"] = times
         resp["model_name"] = grpc_resp.model_name
-        if hasattr(inference_response.outputs[0].parameters, 'times'): # handling drops
-            # times["models"] = eval(eval(inference_response.outputs[0].parameters.times)[0])
-            # times["models"] = eval(inference_response.outputs[0].parameters.times)
-            times["models"] = inference_response.outputs[0].parameters.times
-            # times["models"] = eval(inference_response.outputs[0].parameters.times)
+        if hasattr(inference_response.outputs[0].parameters, 'extended_parameters'): # handling drops
+            extended_parameters = inference_response.outputs[0].parameters.extended_parameters
+            model_times = {}
+            for i, node_name in enumerate(extended_parameters['node_name']):
+                node = {}
+                node["arrival"] = extended_parameters['arrival'][i]
+                node["serving"] = extended_parameters['serving'][i]
+                model_times[node_name] = deepcopy(node)
+            times["models"] = model_times
             resp["outputs"] = [outputs]
         else:
             drop_message = NumpyRequestCodec.decode_response(inference_response)[0]
@@ -285,11 +288,6 @@ class BarAzmoonAsyncGrpc:
                 )
             )
             self.request_index += 1
-        # if self.stop_flag:
-        #     # Cancel all remaining tasks if the stop flag is set
-        #     for task in tasks:
-        #         task.cancel()
-        #     return []
 
         resps = await asyncio.gather(*tasks)
 
