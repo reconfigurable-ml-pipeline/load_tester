@@ -226,6 +226,12 @@ class MLServerAsyncGrpc:
             #         ]
             #     )
             elif self.data_type == "image":
+                # extended_parameters = [{
+                #     "node_name": [1], "arrival": [2], "serving": [3],
+                #     "dtype": ['u1'], "datashape": [[2,2]]}]
+                extended_parameters = {
+                    "dtype": ["u1"],
+                    "datashape": [data_ins.data_shape]}
                 payload = types.InferenceRequest(
                     inputs=[
                         types.RequestInput(
@@ -234,9 +240,10 @@ class MLServerAsyncGrpc:
                             datatype="BYTES",
                             data=[data_ins.data.tobytes()] * self.client_batch,
                             parameters=types.Parameters(
-                                dtype="u1",
-                                datashape=str(data_ins.data_shape),
-                                **data_ins.custom_parameters,
+                                # dtype="u1",
+                                # datashape=str(data_ins.data_shape),
+                                extended_parameters=extended_parameters,
+                                # **data_ins.custom_parameters,
                             ),
                         )
                     ]

@@ -161,8 +161,6 @@ async def request_after_grpc(stub, metadata, wait, payload, ignore_output=False)
                     dtypes = request_output.parameters.extended_parameters['dtype']
                     shapes = request_output.parameters.extended_parameters['datashape']
                     output_data = request_output.data.__root__
-                    # shapes = eval(shapes)
-                    # dtypes = eval(dtypes)
                     X = decode_from_bin(outputs=output_data, shapes=shapes, dtypes=dtypes)
                     outputs = {"data": X}
             elif type_of == "text":
