@@ -24,10 +24,17 @@ def decode_from_bin(
 
 class Data:
     def __init__(
-        self, data, data_shape, custom_parameters={"custom": "custom"}
+        self, data, data_shape,
+        node_name = [],
+        arrival = [],
+        serving = [],
+        custom_parameters={"custom": "custom"}
     ) -> None:
         self.data = data
         self.data_shape = data_shape
+        self.node_name = node_name
+        self.arrival = arrival
+        self.serving = serving
         self.custom_parameters = custom_parameters
 
 
