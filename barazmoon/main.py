@@ -14,14 +14,12 @@ from copy import deepcopy
 
 
 def decode_from_bin(
-    outputs: List[bytes], shapes: List[List[int]], dtypes: List[str]
+    output: List[bytes], shape: List[int], dtype: str
 ) -> List[np.array]:
-    batch = []
-    for input, shape, dtype in zip(outputs, shapes, dtypes):
-        buff = memoryview(input)
-        array = np.frombuffer(buff, dtype=dtype).reshape(shape)
-        batch.append(array)
-    return batch
+
+    buff = memoryview(output)
+    array = np.frombuffer(buff, dtype=dtype).reshape(shape)
+    return array
 
 
 class Data:
@@ -158,10 +156,10 @@ async def request_after_grpc(stub, metadata, wait, payload, ignore_output=False)
         else:
             if type_of == "image":
                 for request_output in inference_response.outputs:
-                    dtypes = request_output.parameters.extended_parameters['dtype']
-                    shapes = request_output.parameters.extended_parameters['datashape']
+                    dtype = request_output.parameters.extended_parameters['dtype']
+                    shape = request_output.parameters.extended_parameters['datashape']
                     output_data = request_output.data.__root__
-                    X = decode_from_bin(outputs=output_data, shapes=shapes, dtypes=dtypes)
+                    X = decode_from_bin(output=output_data[0], shape=shape, dtype=dtype)
                     outputs = {"data": X}
             elif type_of == "text":
                 raw_json = StringRequestCodec.decode_response(inference_response)

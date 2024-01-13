@@ -230,8 +230,8 @@ class MLServerAsyncGrpc:
                 #     "node_name": [1], "arrival": [2], "serving": [3],
                 #     "dtype": ['u1'], "datashape": [[2,2]]}]
                 extended_parameters = {
-                    "dtype": ["u1"],
-                    "datashape": [data_ins.data_shape]}
+                    "dtype": "u1",
+                    "datashape": data_ins.data_shape}
                 payload = types.InferenceRequest(
                     inputs=[
                         types.RequestInput(
