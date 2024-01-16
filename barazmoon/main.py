@@ -28,6 +28,7 @@ class Data:
         node_name = [],
         arrival = [],
         serving = [],
+        next_node = '',
         custom_parameters={"custom": "custom"}
     ) -> None:
         self.data = data
@@ -35,6 +36,7 @@ class Data:
         self.node_name = node_name
         self.arrival = arrival
         self.serving = serving
+        self.next_node = next_node
         self.custom_parameters = custom_parameters
 
 

@@ -234,7 +234,8 @@ class MLServerAsyncGrpc:
                     "datashape": data_ins.data_shape,
                     "node_name": data_ins.node_name,
                     "arrival": data_ins.arrival,
-                    "serving": data_ins.serving}
+                    "serving": data_ins.serving,
+                    "next_node": data_ins.next_node}
                 payload = types.InferenceRequest(
                     inputs=[
                         types.RequestInput(
