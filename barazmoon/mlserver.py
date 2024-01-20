@@ -236,18 +236,36 @@ class MLServerAsyncGrpc:
                     "arrival": data_ins.arrival,
                     "serving": data_ins.serving,
                     "next_node": data_ins.next_node}
+                # extended_parameters_repeated = [{
+                #     "dtype": "u1",
+                #     "datashape": data_ins.data_shape,
+                #     "node_name": data_ins.node_name,
+                #     "arrival": data_ins.arrival,
+                #     "serving": data_ins.serving,
+                #     "next_node": data_ins.next_node},
+                #     {
+                #     "dtype": "u1",
+                #     "datashape": data_ins.data_shape,
+                #     "node_name": data_ins.node_name,
+                #     "arrival": data_ins.arrival,
+                #     "serving": data_ins.serving,
+                #     "next_node": data_ins.next_node}
+                #     ]
                 payload = types.InferenceRequest(
                     inputs=[
                         types.RequestInput(
                             name="image-bytes",
                             shape=[1],
+                            # shape=[2],
                             datatype="BYTES",
+                            # data=[data_ins.data.tobytes()] * self.client_batch * 2,
                             data=[data_ins.data.tobytes()] * self.client_batch,
                             parameters=types.Parameters(
                                 # dtype="u1",
                                 # datashape=str(data_ins.data_shape),
+                                # extended_parameters_repeated=extended_parameters_repeated,
                                 extended_parameters=extended_parameters,
-                                **data_ins.custom_parameters,
+                                # **data_ins.custom_parameters,
                             ),
                         )
                     ]
