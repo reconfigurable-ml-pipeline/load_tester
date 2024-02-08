@@ -29,7 +29,7 @@ class Data:
         arrival = [],
         serving = [],
         next_node = '',
-        custom_parameters=None
+        custom_parameters=None,
     ) -> None:
         self.data = data
         self.data_shape = data_shape

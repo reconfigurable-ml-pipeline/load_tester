@@ -145,6 +145,7 @@ class MLServerAsyncGrpc:
         benchmark_duration: int = 1,
         ignore_output: bool = False,
         grpc_max_message_length: int = 104857600,
+        sla: int = 0,
         **kwargs,
     ):
         self.endpoint = endpoint
@@ -160,6 +161,7 @@ class MLServerAsyncGrpc:
         self.client_batch = client_batch
         self.ignore_output = ignore_output
         self.grpc_max_message_length = grpc_max_message_length
+        self.sla = sla
         self.payloads = self.get_request_data()
 
     async def start(self):
@@ -170,7 +172,7 @@ class MLServerAsyncGrpc:
             self.mode,
             self.benchmark_duration,
             self.ignore_output,
-            self.grpc_max_message_length
+            # self.grpc_max_message_length
         )
         await c.benchmark(self._workload)
         return c.responses
@@ -235,21 +237,24 @@ class MLServerAsyncGrpc:
                     "node_name": data_ins.node_name,
                     "arrival": data_ins.arrival,
                     "serving": data_ins.serving,
-                    "next_node": data_ins.next_node}
+                    "next_node": data_ins.next_node,
+                    'sla': self.sla}
                 # extended_parameters_repeated = [{
                 #     "dtype": "u1",
                 #     "datashape": data_ins.data_shape,
                 #     "node_name": data_ins.node_name,
                 #     "arrival": data_ins.arrival,
                 #     "serving": data_ins.serving,
-                #     "next_node": data_ins.next_node},
+                #     "next_node": data_ins.next_node,
+                #      "sla": data_ins.sla},
                 #     {
                 #     "dtype": "u1",
                 #     "datashape": data_ins.data_shape,
                 #     "node_name": data_ins.node_name,
                 #     "arrival": data_ins.arrival,
                 #     "serving": data_ins.serving,
-                #     "next_node": data_ins.next_node}
+                #     "next_node": data_ins.next_node,
+                #     "sla": data_ins.sla}
                 #     ]
                 payload = types.InferenceRequest(
                     inputs=[
