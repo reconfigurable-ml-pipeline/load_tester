@@ -16,7 +16,6 @@ from copy import deepcopy
 def decode_from_bin(
     output: List[bytes], shape: List[int], dtype: str
 ) -> List[np.array]:
-
     buff = memoryview(output)
     array = np.frombuffer(buff, dtype=dtype).reshape(shape)
     return array
@@ -24,11 +23,13 @@ def decode_from_bin(
 
 class Data:
     def __init__(
-        self, data, data_shape,
-        node_name = [],
-        arrival = [],
-        serving = [],
-        next_node = '',
+        self,
+        data,
+        data_shape,
+        node_name=[],
+        arrival=[],
+        serving=[],
+        next_node="",
         custom_parameters=None,
     ) -> None:
         self.data = data
@@ -165,8 +166,8 @@ async def request_after_grpc(stub, metadata, wait, payload, ignore_output=False)
         else:
             if type_of == "image":
                 for request_output in inference_response.outputs:
-                    dtype = request_output.parameters.extended_parameters['dtype']
-                    shape = request_output.parameters.extended_parameters['datashape']
+                    dtype = request_output.parameters.extended_parameters["dtype"]
+                    shape = request_output.parameters.extended_parameters["datashape"]
                     output_data = request_output.data.__root__
                     X = decode_from_bin(output=output_data[0], shape=shape, dtype=dtype)
                     outputs = {"data": X}
@@ -183,13 +184,17 @@ async def request_after_grpc(stub, metadata, wait, payload, ignore_output=False)
         resp = {}
         resp["times"] = times
         resp["model_name"] = grpc_resp.model_name
-        if hasattr(inference_response.outputs[0].parameters, 'extended_parameters'): # handling drops
-            extended_parameters = inference_response.outputs[0].parameters.extended_parameters
+        if hasattr(
+            inference_response.outputs[0].parameters, "extended_parameters"
+        ):  # handling drops
+            extended_parameters = inference_response.outputs[
+                0
+            ].parameters.extended_parameters
             model_times = {}
-            for i, node_name in enumerate(extended_parameters['node_name']):
+            for i, node_name in enumerate(extended_parameters["node_name"]):
                 node = {}
-                node["arrival"] = extended_parameters['arrival'][i]
-                node["serving"] = extended_parameters['serving'][i]
+                node["arrival"] = extended_parameters["arrival"][i]
+                node["serving"] = extended_parameters["serving"][i]
                 model_times[node_name] = deepcopy(node)
             times["models"] = model_times
             resp["outputs"] = [outputs]
@@ -223,7 +228,7 @@ class BarAzmoonAsyncGrpc:
         mode: str,
         benchmark_duration=1,
         ignore_output=False,
-        grpc_max_message_length: int = 104857600
+        grpc_max_message_length: int = 104857600,
     ):
         """
         endpoint:
@@ -242,10 +247,11 @@ class BarAzmoonAsyncGrpc:
         self.ignore_output = ignore_output
         self.grpc_max_message_length = grpc_max_message_length
 
-    async def benchmark(self, request_counts):
+    async def benchmark(self, request_counts, slas):
         options = [
-            ('grpc.max_send_message_length', self.grpc_max_message_length),
-            ('grpc.max_receive_message_length', self.grpc_max_message_length)]
+            ("grpc.max_send_message_length", self.grpc_max_message_length),
+            ("grpc.max_receive_message_length", self.grpc_max_message_length),
+        ]
         async with grpc.aio.insecure_channel(self.endpoint, options=options) as ch:
             self.stub = dataplane.GRPCInferenceServiceStub(ch)
             tasks = []
@@ -253,13 +259,13 @@ class BarAzmoonAsyncGrpc:
                 tasks.append(
                     asyncio.ensure_future(
                         self.submit_requests_after(
-                            i * self.duration, req_count, self.duration
+                            i * self.duration, req_count, self.duration, slas[i]
                         )
                     )
                 )
             await asyncio.gather(*tasks)
 
-    async def submit_requests_after(self, after, req_count, duration):
+    async def submit_requests_after(self, after, req_count, duration, sla):
         if after:
             await asyncio.sleep(after)
         tasks = []
@@ -276,19 +282,30 @@ class BarAzmoonAsyncGrpc:
         print(
             f"Sending {req_count} requests sent in {time.ctime()} at timestep {after}"
         )
+
         for i in range(req_count):
             if self.request_index == len(self.payloads):
                 self.request_index = 0
             if self.stop_flag:
                 break
+
+            # Adding sla to the payload (currently only single input is supported)
+            model_name = self.payloads[0].model_name
+            payload = converters.ModelInferRequestConverter.to_types(self.payloads[0])
+            payload.inputs[0].parameters.extended_parameters['sla'] = sla
+            payload = converters.ModelInferRequestConverter.from_types(
+                payload, model_name=model_name, model_version=None
+            )
+
             tasks.append(
                 asyncio.ensure_future(
                     request_after_grpc(
                         self.stub,
                         self.metadata,
                         wait=arrival[i],
-                        payload=self.payloads[self.request_index],
-                        ignore_output=self.ignore_output
+                        # payload=self.payloads[self.request_index],
+                        payload=payload,
+                        ignore_output=self.ignore_output,
                     )
                 )
             )

@@ -135,6 +135,7 @@ class MLServerAsyncGrpc:
         self,
         *,
         workload: List[int],
+        slas: List[float],
         endpoint: str,
         data: List[Data],
         model: str,
@@ -145,13 +146,13 @@ class MLServerAsyncGrpc:
         benchmark_duration: int = 1,
         ignore_output: bool = False,
         grpc_max_message_length: int = 104857600,
-        sla: int = 0,
         **kwargs,
     ):
         self.endpoint = endpoint
         self.metadata = metadata
         self.model = model
         self._workload = (rate for rate in workload)
+        self._slas = slas
         self._counter = 0
         self.data_type = data_type
         self.data = data
@@ -161,7 +162,6 @@ class MLServerAsyncGrpc:
         self.client_batch = client_batch
         self.ignore_output = ignore_output
         self.grpc_max_message_length = grpc_max_message_length
-        self.sla = sla
         self.payloads = self.get_request_data()
 
     async def start(self):
@@ -174,12 +174,11 @@ class MLServerAsyncGrpc:
             self.ignore_output,
             # self.grpc_max_message_length
         )
-        await c.benchmark(self._workload)
+        await c.benchmark(self._workload, self._slas)
         return c.responses
-    
+
     # def stop(self):
     #     self.c.stop()
-        
 
     def get_request_data(self) -> Tuple[str, str]:
         payloads = []
@@ -238,7 +237,8 @@ class MLServerAsyncGrpc:
                     "arrival": data_ins.arrival,
                     "serving": data_ins.serving,
                     "next_node": data_ins.next_node,
-                    'sla': self.sla}
+                    "sla": 0,
+                }
                 # extended_parameters_repeated = [{
                 #     "dtype": "u1",
                 #     "datashape": data_ins.data_shape,
