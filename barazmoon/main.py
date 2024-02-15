@@ -217,6 +217,12 @@ async def request_after_grpc(stub, metadata, wait, payload, ignore_output=False)
             times["request"] = {"sending": sending_time}
         resp["times"] = times
         return resp
+    except TypeError:
+        resp = {"failed": StringRequestCodec.decode_response(inference_response)[0]}
+        times = {}
+        times["request"] = {"sending": sending_time, "arrival": arrival_time}
+        resp["times"] = times
+        return resp        
 
 
 class BarAzmoonAsyncGrpc:
