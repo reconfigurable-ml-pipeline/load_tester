@@ -13,7 +13,7 @@ setup(
     packages=find_packages("."),
     long_description=read(),
     install_requires=[
-        "numpy==1.23.4",
+        "numpy==1.23.5",
         "aiohttp==3.8.3",
     ]
 )
