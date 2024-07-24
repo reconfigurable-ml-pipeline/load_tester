@@ -28,7 +28,7 @@ class BarAzmoon:
             time.sleep(1)
         print("Spawned all the processes. Waiting to finish...")
         for p in active_children():
-            p.join()
+            p.join(timeout=5)
         
         print(f"total seconds: {total_seconds}")
 
