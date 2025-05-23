@@ -43,7 +43,7 @@ class BarAzmoon:
 
     async def generate_load_for_second(self, count):
         async with ClientSession(connector=TCPConnector(limit=0)) as session:
-            delays = np.cumsum(np.random.exponential(1 / (count * 1.5), count))
+            delays = np.cumsum(np.random.exponential(1 / (count), count))
             tasks = []
             for i in range(count):
                 task = asyncio.create_task(self.predict(delays[i], session))
